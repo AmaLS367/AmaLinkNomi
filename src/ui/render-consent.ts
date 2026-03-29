@@ -246,6 +246,9 @@ export function renderConsentPage(input: {
       const sessionPanel = document.getElementById('session-panel');
       const sessionCopy = document.getElementById('session-copy');
       const emailInput = document.getElementById('email');
+      const approveButton = document.getElementById('approve');
+      const denyButton = document.getElementById('deny');
+      let submissionInFlight = false;
 
       if (authorizationId) {
         boot().catch((error) => setStatus(error?.message || 'Failed to initialize consent.', true));
@@ -258,8 +261,16 @@ export function renderConsentPage(input: {
         }
 
         const config = await configResponse.json();
-        const client = createClient(config.supabaseUrl, config.supabaseAnonKey);
-        await client.auth.getSession();
+        const client = createClient(config.supabaseUrl, config.supabaseAnonKey, {
+          auth: {
+            flowType: 'pkce',
+            detectSessionInUrl: true,
+            persistSession: true,
+            autoRefreshToken: true,
+          },
+        });
+
+        await completeRedirectSignIn(client);
 
         client.auth.onAuthStateChange((_event, session) => {
           renderSession(session);
@@ -299,11 +310,16 @@ export function renderConsentPage(input: {
         });
 
         document.getElementById('approve')?.addEventListener('click', async () => {
+          if (submissionInFlight) return;
           const session = (await client.auth.getSession()).data.session;
           if (!session?.access_token) {
             setStatus('Sign in before approving access.', true);
             return;
           }
+
+          submissionInFlight = true;
+          setButtonsDisabled(true);
+          setStatus('Approving access and redirecting back to your MCP client…', false, true);
 
           const response = await fetch('/oauth/consent', {
             method: 'POST',
@@ -320,6 +336,8 @@ export function renderConsentPage(input: {
 
           const payload = await response.json().catch(() => null);
           if (!response.ok || !payload?.redirectUrl) {
+            submissionInFlight = false;
+            setButtonsDisabled(false);
             setStatus(payload?.error?.message || 'Approval failed.', true);
             return;
           }
@@ -328,6 +346,11 @@ export function renderConsentPage(input: {
         });
 
         document.getElementById('deny')?.addEventListener('click', async () => {
+          if (submissionInFlight) return;
+          submissionInFlight = true;
+          setButtonsDisabled(true);
+          setStatus('Denying access and returning to your MCP client…', false, true);
+
           const response = await fetch('/oauth/consent', {
             method: 'POST',
             headers: {
@@ -341,12 +364,42 @@ export function renderConsentPage(input: {
 
           const payload = await response.json().catch(() => null);
           if (!response.ok || !payload?.redirectUrl) {
+            submissionInFlight = false;
+            setButtonsDisabled(false);
             setStatus(payload?.error?.message || 'Unable to deny access cleanly.', true);
             return;
           }
 
           window.location.assign(payload.redirectUrl);
         });
+      }
+
+      async function completeRedirectSignIn(client) {
+        const url = new URL(window.location.href);
+        const authCode = url.searchParams.get('code');
+        const authError = url.searchParams.get('error_description') || url.searchParams.get('error');
+
+        if (authError) {
+          setStatus(authError, true);
+        }
+
+        if (!authCode) {
+          return;
+        }
+
+        setStatus('Completing Supabase sign-in…', false, true);
+        const { error } = await client.auth.exchangeCodeForSession(authCode);
+        if (error) {
+          throw new Error(error.message || 'Supabase sign-in callback failed.');
+        }
+
+        const cleaned = new URL(window.location.origin + window.location.pathname);
+        if (authorizationId) {
+          cleaned.searchParams.set('authorization_id', authorizationId);
+        }
+
+        window.history.replaceState({}, '', cleaned.toString());
+        setStatus('Supabase sign-in completed. You can now approve access.', false, true);
       }
 
       function renderSession(session) {
@@ -358,6 +411,11 @@ export function renderConsentPage(input: {
           sessionCopy.textContent = 'Signed in as ' + (session.user?.email || session.user?.id || 'current user');
           setStatus('Approve access to finish the ChatGPT connection.', false, true);
         }
+      }
+
+      function setButtonsDisabled(disabled) {
+        if (approveButton) approveButton.disabled = disabled;
+        if (denyButton) denyButton.disabled = disabled;
       }
 
       function setStatus(message, isError = false, isSuccess = false) {

@@ -453,6 +453,9 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
                   Send Magic Link
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                 </button>
+                <button id="google-login" type="button" class="btn-secondary">
+                  Continue with Google
+                </button>
               </div>
             </form>
           </div>
@@ -600,6 +603,7 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
       const summaryBridgeStatus = document.getElementById('summary-bridge-status');
 
       const loginForm = document.getElementById('login-form');
+      const googleLoginButton = document.getElementById('google-login');
       const keyForm = document.getElementById('key-form');
       const deleteKeyButton = document.getElementById('delete-key');
       const refreshStatusButton = document.getElementById('refresh-status');
@@ -624,7 +628,16 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
         }
 
         const config = await configResponse.json();
-        client = createClient(config.supabaseUrl, config.supabaseAnonKey);
+        client = createClient(config.supabaseUrl, config.supabaseAnonKey, {
+          auth: {
+            flowType: 'pkce',
+            detectSessionInUrl: true,
+            persistSession: true,
+            autoRefreshToken: true,
+          },
+        });
+
+        await completeRedirectSignIn();
         const currentSession = await client.auth.getSession();
         session = currentSession.data.session;
         renderSession();
@@ -638,6 +651,7 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
         });
 
         loginForm?.addEventListener('submit', onLoginSubmit);
+        googleLoginButton?.addEventListener('click', onGoogleLogin);
         keyForm?.addEventListener('submit', onSaveKey);
         deleteKeyButton?.addEventListener('click', onDeleteKey);
         refreshStatusButton?.addEventListener('click', () => refreshStatus());
@@ -672,6 +686,40 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
         }
 
         setMessage('✨ Magic link sent! Check your inbox to continue.');
+      }
+
+      async function onGoogleLogin() {
+        const { error } = await client.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: window.location.origin + window.location.pathname,
+          },
+        });
+
+        if (error) {
+          setMessage(error.message, true);
+          return;
+        }
+
+        setMessage('Redirecting to Google sign-in…');
+      }
+
+      async function completeRedirectSignIn() {
+        const url = new URL(window.location.href);
+        const authCode = url.searchParams.get('code');
+        if (!authCode) {
+          return;
+        }
+
+        setMessage('Completing sign-in…');
+        const { error } = await client.auth.exchangeCodeForSession(authCode);
+        if (error) {
+          throw new Error(error.message || 'Supabase sign-in callback failed.');
+        }
+
+        const cleaned = new URL(window.location.origin + window.location.pathname);
+        window.history.replaceState({}, '', cleaned.toString());
+        setMessage('Signed in successfully.');
       }
 
       async function onSaveKey(event) {
