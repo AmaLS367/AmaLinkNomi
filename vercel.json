@@ -1,8 +1,20 @@
 {
   "version": 2,
   "functions": {
-    "api/mcp.ts": {
-      "maxDuration": 30
+    "api/index.ts": {
+      "maxDuration": 60
     }
-  }
+  },
+  "rewrites": [
+    { "source": "/", "destination": "/api/index" },
+    { "source": "/settings", "destination": "/api/index" },
+    { "source": "/status", "destination": "/api/index" },
+    { "source": "/api/mcp", "destination": "/api/index" },
+    { "source": "/api/public-config", "destination": "/api/index" },
+    { "source": "/api/me/nomi-key", "destination": "/api/index" },
+    { "source": "/api/me/nomi-key/status", "destination": "/api/index" },
+    { "source": "/.well-known/oauth-protected-resource/api/mcp", "destination": "/api/index" },
+    { "source": "/.well-known/oauth-authorization-server", "destination": "/api/index" },
+    { "source": "/health", "destination": "/api/index" }
+  ]
 }
