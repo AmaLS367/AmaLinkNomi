@@ -795,5 +795,5 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
       }
     </script>
   </body>
-</html>\`;
+</html>`;
 }
