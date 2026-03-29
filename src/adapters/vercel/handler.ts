@@ -1,6 +1,9 @@
 import { IncomingMessage, ServerResponse } from 'http';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { authenticateRequest } from '../../auth/authenticate-request';
+import { getMcpAuthRequirement } from '../../auth/mcp-auth';
+import { buildWwwAuthenticateHeader } from '../../auth/oauth-metadata';
+import { authenticateBearerToken } from '../../auth/token-auth';
+import { createAppRuntime } from '../../app/runtime';
 import { createMcpServer } from '../../app/mcp-server';
 import { AppError } from '../../shared/errors';
 import { sendError } from '../../shared/http';
@@ -14,18 +17,21 @@ export async function handleMcpRequest(
   logger.info('Incoming MCP request', { method: req.method, url: req.url });
 
   try {
-    const authHeader = req.headers['authorization'] as string | undefined;
-    const apiKeyHeader = req.headers['x-api-key'] as string | undefined;
-    authenticateRequest(authHeader, apiKeyHeader);
+    const authRequirement = getMcpAuthRequirement(parsedBody);
+    const authUser =
+      authRequirement === 'authenticated'
+        ? await authenticateBearerToken(req.headers['authorization'] as string | undefined)
+        : null;
 
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
     });
-    const mcpServer = createMcpServer();
+    const mcpServer = createMcpServer(createAppRuntime(authUser));
     await mcpServer.connect(transport);
     await transport.handleRequest(req, res, parsedBody);
   } catch (err) {
     if (err instanceof AppError && err.statusCode === 401) {
+      res.setHeader('WWW-Authenticate', buildWwwAuthenticateHeader(req));
       logger.warn('Authentication failed');
     } else {
       logger.error('Request handling error', {

@@ -1,16 +1,20 @@
 import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { AppRuntime } from '../app/runtime';
 import { listNomisHandler } from './list-nomis';
 import { getNomiHandler } from './get-nomi';
 import { sendMessageHandler } from './send-message';
 import { listRoomsHandler } from './list-rooms';
 import { sendRoomMessageHandler } from './send-room-message';
 
-export function registerAllTools(server: McpServer): void {
+export function registerAllTools(server: McpServer, runtime: AppRuntime): void {
   server.registerTool(
     'list_nomis',
-    { description: 'List all Nomi characters associated with your account' },
-    listNomisHandler
+    {
+      description: 'List all Nomi characters associated with your account',
+      annotations: { readOnlyHint: true },
+    },
+    listNomisHandler(runtime)
   );
 
   server.registerTool(
@@ -18,8 +22,9 @@ export function registerAllTools(server: McpServer): void {
     {
       description: 'Get details for a specific Nomi by ID',
       inputSchema: { nomi_id: z.string().min(1, 'nomi_id is required') },
+      annotations: { readOnlyHint: true },
     },
-    getNomiHandler
+    getNomiHandler(runtime)
   );
 
   server.registerTool(
@@ -31,13 +36,16 @@ export function registerAllTools(server: McpServer): void {
         message: z.string().min(1, 'message cannot be empty').max(800, 'message exceeds 800 character limit'),
       },
     },
-    sendMessageHandler
+    sendMessageHandler(runtime)
   );
 
   server.registerTool(
     'list_rooms',
-    { description: 'List all rooms associated with your account' },
-    listRoomsHandler
+    {
+      description: 'List all rooms associated with your account',
+      annotations: { readOnlyHint: true },
+    },
+    listRoomsHandler(runtime)
   );
 
   server.registerTool(
@@ -49,6 +57,6 @@ export function registerAllTools(server: McpServer): void {
         message: z.string().min(1, 'message cannot be empty').max(800, 'message exceeds 800 character limit'),
       },
     },
-    sendRoomMessageHandler
+    sendRoomMessageHandler(runtime)
   );
 }
