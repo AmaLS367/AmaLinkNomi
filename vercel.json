@@ -14,6 +14,10 @@
     { "source": "/api/public-config", "destination": "/api/index" },
     { "source": "/api/me/nomi-key", "destination": "/api/index" },
     { "source": "/api/me/nomi-key/status", "destination": "/api/index" },
+    { "source": "/oauth/consent", "destination": "/api/index" },
+    { "source": "/authorize", "destination": "/api/index" },
+    { "source": "/token", "destination": "/api/index" },
+    { "source": "/register", "destination": "/api/index" },
     { "source": "/.well-known/oauth-protected-resource/api/mcp", "destination": "/api/index" },
     { "source": "/.well-known/oauth-authorization-server", "destination": "/api/index" },
     { "source": "/health", "destination": "/api/index" }
