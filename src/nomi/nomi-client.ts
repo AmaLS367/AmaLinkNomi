@@ -1,5 +1,5 @@
-import { env } from '../config/env';
-import { AppError } from '../shared/errors';
+import { CredentialRejectedError, AppError } from '../shared/errors';
+
 import {
   Nomi,
   SendMessageResponse,
@@ -8,25 +8,39 @@ import {
   ListRoomsResponse,
 } from './nomi-types';
 
+export interface NomiApiClientOptions {
+  apiKey: string;
+  baseUrl?: string;
+  fetchImpl?: typeof fetch;
+}
+
 export class NomiApiClient {
   private readonly baseUrl: string;
+  private readonly apiKey: string;
+  private readonly fetchImpl: typeof fetch;
 
-  constructor(baseUrl?: string) {
-    this.baseUrl = baseUrl ?? env.NOMI_API_BASE_URL;
+  constructor(options: NomiApiClientOptions) {
+    this.apiKey = options.apiKey;
+    this.baseUrl = options.baseUrl ?? 'https://api.nomi.ai';
+    this.fetchImpl = options.fetchImpl ?? fetch;
   }
 
   private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${path}`;
-    const response = await fetch(url, {
+    const response = await this.fetchImpl(url, {
       ...options,
       headers: {
-        Authorization: `Bearer ${env.NOMI_API_KEY}`,
+        Authorization: this.apiKey,
         'Content-Type': 'application/json',
         ...options.headers,
       },
     });
 
     if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        throw new CredentialRejectedError();
+      }
+
       let apiErrorType = 'UnknownError';
       let message = response.statusText;
       try {
@@ -34,8 +48,9 @@ export class NomiApiClient {
         apiErrorType = body?.error?.type ?? apiErrorType;
         message = body?.error?.message ?? message;
       } catch {
-        // ignore parse failure
+        // Ignore parse failure.
       }
+
       const statusCode = response.status >= 500 ? 502 : response.status;
       throw new AppError(`Nomi API error: ${message}`, apiErrorType, statusCode);
     }
@@ -69,5 +84,3 @@ export class NomiApiClient {
     });
   }
 }
-
-export const nomiClient = new NomiApiClient();
