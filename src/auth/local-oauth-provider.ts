@@ -15,8 +15,8 @@ import {
   InvalidTokenError,
 } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { AuthError } from '../shared/errors';
-import { authenticateBearerToken } from './token-auth';
-import { getEnv } from '../config/env';
+import { authenticateBearerToken, type AuthenticatedUser } from './token-auth';
+import { getEnv, type AppEnv } from '../config/env';
 
 type RegisteredClientPayload = Omit<OAuthClientInformationFull, 'client_id'>;
 
@@ -45,6 +45,11 @@ type AuthorizationCodePayload = {
 export const OAUTH_SCOPES_SUPPORTED = ['openid', 'email', 'profile'];
 const AUTHORIZATION_TTL_MS = 10 * 60 * 1000;
 const CODE_TTL_MS = 2 * 60 * 1000;
+
+export interface LocalOAuthProviderOptions {
+  env?: AppEnv;
+  authenticateUser?: (authorizationHeader?: string | null) => Promise<AuthenticatedUser>;
+}
 
 export class StatelessOAuthClientsStore implements OAuthRegisteredClientsStore {
   async getClient(clientId: string): Promise<OAuthClientInformationFull | undefined> {
@@ -78,6 +83,13 @@ export class StatelessOAuthClientsStore implements OAuthRegisteredClientsStore {
 
 export class LocalOAuthProvider implements OAuthServerProvider {
   readonly clientsStore = new StatelessOAuthClientsStore();
+  private readonly env: AppEnv;
+  private readonly authenticateUser: (authorizationHeader?: string | null) => Promise<AuthenticatedUser>;
+
+  constructor(options: LocalOAuthProviderOptions = {}) {
+    this.env = options.env ?? getEnv();
+    this.authenticateUser = options.authenticateUser ?? authenticateBearerToken;
+  }
 
   async authorize(client: OAuthClientInformationFull, params: AuthorizationParams, res: Response): Promise<void> {
     const authorizationId = signPayload<AuthorizationRequestPayload>({
@@ -88,13 +100,13 @@ export class LocalOAuthProvider implements OAuthServerProvider {
       codeChallenge: params.codeChallenge,
       resource: params.resource?.href,
       exp: Date.now() + AUTHORIZATION_TTL_MS,
-    });
+    }, this.env);
 
     res.redirect(302, `/oauth/consent?authorization_id=${encodeURIComponent(authorizationId)}`);
   }
 
   async challengeForAuthorizationCode(client: OAuthClientInformationFull, authorizationCode: string): Promise<string> {
-    const payload = verifySignedToken<AuthorizationCodePayload>(authorizationCode);
+    const payload = verifySignedToken<AuthorizationCodePayload>(authorizationCode, this.env);
     ensureClientMatch(client, payload.clientId);
     return payload.codeChallenge;
   }
@@ -106,7 +118,7 @@ export class LocalOAuthProvider implements OAuthServerProvider {
     redirectUri?: string,
     resource?: URL
   ): Promise<OAuthTokens> {
-    const payload = verifySignedToken<AuthorizationCodePayload>(authorizationCode);
+    const payload = verifySignedToken<AuthorizationCodePayload>(authorizationCode, this.env);
     ensureClientMatch(client, payload.clientId);
 
     if (redirectUri && redirectUri !== payload.redirectUri) {
@@ -136,15 +148,15 @@ export class LocalOAuthProvider implements OAuthServerProvider {
       throw new InvalidRequestError('refresh_token is required.');
     }
 
-    const supabaseTokens = await refreshSupabaseSession(refreshToken);
-    await authenticateBearerToken(`Bearer ${supabaseTokens.access_token}`);
+    const supabaseTokens = await refreshSupabaseSession(refreshToken, this.env);
+    await this.authenticateUser(`Bearer ${supabaseTokens.access_token}`);
     await this.clientsStore.getClient(client.client_id);
 
     return supabaseTokens;
   }
 
   async verifyAccessToken(token: string) {
-    const user = await authenticateBearerToken(`Bearer ${token}`);
+    const user = await this.authenticateUser(`Bearer ${token}`);
     const expiresAt = typeof user.claims.exp === 'number' ? user.claims.exp : undefined;
     return {
       token,
@@ -163,8 +175,10 @@ export function buildAuthorizationCode(input: {
   authorizationId: string;
   accessToken: string;
   refreshToken?: string;
+  env?: AppEnv;
 }): AuthorizationCodePayload & { token: string } {
-  const authorization = verifySignedToken<AuthorizationRequestPayload>(input.authorizationId);
+  const env = input.env ?? getEnv();
+  const authorization = verifySignedToken<AuthorizationRequestPayload>(input.authorizationId, env);
   const user = parseUserFromToken(input.accessToken);
   const expiresAt = typeof user.exp === 'number' ? user.exp : undefined;
 
@@ -182,7 +196,7 @@ export function buildAuthorizationCode(input: {
 
   return {
     ...payload,
-    token: signPayload(payload),
+    token: signPayload(payload, env),
   };
 }
 
@@ -191,8 +205,10 @@ export function buildConsentRedirect(input: {
   decision: 'approve' | 'deny';
   accessToken?: string;
   refreshToken?: string;
+  env?: AppEnv;
 }): string {
-  const authorization = verifySignedToken<AuthorizationRequestPayload>(input.authorizationId);
+  const env = input.env ?? getEnv();
+  const authorization = verifySignedToken<AuthorizationRequestPayload>(input.authorizationId, env);
   const redirectTarget = new URL(authorization.redirectUri);
 
   if (authorization.state) {
@@ -213,14 +229,15 @@ export function buildConsentRedirect(input: {
     authorizationId: input.authorizationId,
     accessToken: input.accessToken,
     refreshToken: input.refreshToken,
+    env,
   });
 
   redirectTarget.searchParams.set('code', authorizationCode.token);
   return redirectTarget.href;
 }
 
-export function getAuthorizationSummary(authorizationId: string) {
-  const payload = verifySignedToken<AuthorizationRequestPayload>(authorizationId);
+export function getAuthorizationSummary(authorizationId: string, env = getEnv()) {
+  const payload = verifySignedToken<AuthorizationRequestPayload>(authorizationId, env);
   return {
     clientId: payload.clientId,
     redirectUri: payload.redirectUri,
@@ -229,8 +246,7 @@ export function getAuthorizationSummary(authorizationId: string) {
   };
 }
 
-function refreshSupabaseSession(refreshToken: string): Promise<OAuthTokens> {
-  const env = getEnv();
+function refreshSupabaseSession(refreshToken: string, env: AppEnv = getEnv()): Promise<OAuthTokens> {
   const url = `${env.SUPABASE_URL.replace(/\/$/, '')}/auth/v1/token?grant_type=refresh_token`;
 
   return fetch(url, {
@@ -287,19 +303,19 @@ function ensureClientMatch(client: OAuthClientInformationFull, clientId: string)
   }
 }
 
-function signPayload<T extends object>(payload: T): string {
+function signPayload<T extends object>(payload: T, env: AppEnv = getEnv()): string {
   const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  const signature = createHmac('sha256', getSigningSecret()).update(body).digest('base64url');
+  const signature = createHmac('sha256', getSigningSecret(env)).update(body).digest('base64url');
   return `${body}.${signature}`;
 }
 
-function verifySignedToken<T extends object>(token: string): T {
+function verifySignedToken<T extends object>(token: string, env: AppEnv = getEnv()): T {
   const [body, signature] = token.split('.');
   if (!body || !signature) {
     throw new InvalidRequestError('Malformed OAuth token.');
   }
 
-  const expectedSignature = createHmac('sha256', getSigningSecret()).update(body).digest('base64url');
+  const expectedSignature = createHmac('sha256', getSigningSecret(env)).update(body).digest('base64url');
   const actualBuffer = Buffer.from(signature);
   const expectedBuffer = Buffer.from(expectedSignature);
 
@@ -322,7 +338,6 @@ function verifySignedToken<T extends object>(token: string): T {
   return payload;
 }
 
-function getSigningSecret(): string {
-  const env = getEnv();
+function getSigningSecret(env: AppEnv = getEnv()): string {
   return `${env.SUPABASE_SERVICE_ROLE_KEY}:ama-nomi-bridge:oauth`;
 }

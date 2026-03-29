@@ -2,7 +2,7 @@ import express from 'express';
 import { authorizationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/authorize.js';
 import { clientRegistrationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/register.js';
 import { tokenHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/token.js';
-import { getPublicEnv, getEnv } from '../config/env';
+import { getPublicEnv, getEnv, type AppEnv } from '../config/env';
 import { authenticateBearerToken, type AuthenticatedUser } from '../auth/token-auth';
 import { buildAuthorizationServerMetadata, buildProtectedResourceMetadata } from '../auth/oauth-metadata';
 import {
@@ -18,11 +18,32 @@ import { renderConsentPage } from '../ui/render-consent';
 import { renderShell } from '../ui/render-shell';
 import { handleMcpRequest } from '../adapters/vercel/handler';
 
-export function createApp() {
+type PublicEnv = Pick<AppEnv, 'SUPABASE_URL' | 'SUPABASE_ANON_KEY'>;
+type CredentialStore = Pick<UserNomiCredentialsStore, 'getStatus' | 'upsertApiKey' | 'deleteApiKey'>;
+
+export interface CreateAppOptions {
+  env?: AppEnv;
+  publicEnv?: PublicEnv;
+  authenticateUser?: (authorizationHeader?: string | null) => Promise<AuthenticatedUser>;
+  credentialsStore?: CredentialStore;
+  oauthProvider?: LocalOAuthProvider;
+  createNomiClient?: (input: { apiKey: string; baseUrl: string }) => Pick<NomiApiClient, 'listNomis'>;
+}
+
+export function createApp(options: CreateAppOptions = {}) {
   const app = express();
-  const env = getEnv();
-  const store = new UserNomiCredentialsStore();
-  const oauthProvider = new LocalOAuthProvider();
+  const env = options.env ?? getEnv();
+  const publicEnv = options.publicEnv ?? getPublicEnv();
+  const authenticateUser = options.authenticateUser ?? authenticateBearerToken;
+  const store = options.credentialsStore ?? new UserNomiCredentialsStore();
+  const oauthProvider =
+    options.oauthProvider ??
+    new LocalOAuthProvider({
+      env,
+      authenticateUser,
+    });
+  const createNomiClient =
+    options.createNomiClient ?? ((input: { apiKey: string; baseUrl: string }) => new NomiApiClient(input));
 
   app.use(express.json());
 
@@ -39,7 +60,6 @@ export function createApp() {
   });
 
   app.get('/api/public-config', (_req, res) => {
-    const publicEnv = getPublicEnv();
     res.json({
       supabaseUrl: publicEnv.SUPABASE_URL,
       supabaseAnonKey: publicEnv.SUPABASE_ANON_KEY,
@@ -54,10 +74,31 @@ export function createApp() {
     res.json(buildAuthorizationServerMetadata(req));
   });
 
-  app.use('/authorize', authorizationHandler({ provider: oauthProvider, rateLimit: false }));
-  app.use('/token', tokenHandler({ provider: oauthProvider, rateLimit: false }));
+  app.use('/authorize', (req, _res, next) => {
+    logger.info('OAuth authorize start', {
+      method: req.method,
+      hasClientId: Boolean(req.query.client_id ?? req.body?.client_id),
+      redirectUriHost: getHostFromUnknown(req.query.redirect_uri ?? req.body?.redirect_uri),
+    });
+    next();
+  }, authorizationHandler({ provider: oauthProvider, rateLimit: false }));
+  app.use('/token', (req, _res, next) => {
+    logger.info('OAuth token exchange start', {
+      method: req.method,
+      grantType: req.body?.grant_type ?? null,
+      hasClientId: Boolean(req.body?.client_id),
+    });
+    next();
+  }, tokenHandler({ provider: oauthProvider, rateLimit: false }));
   app.use(
     '/register',
+    (req, _res, next) => {
+      logger.info('OAuth client registration start', {
+        method: req.method,
+        redirectUriCount: Array.isArray(req.body?.redirect_uris) ? req.body.redirect_uris.length : 0,
+      });
+      next();
+    },
     clientRegistrationHandler({
       clientsStore: oauthProvider.clientsStore,
       rateLimit: false,
@@ -66,6 +107,10 @@ export function createApp() {
 
   app.get('/oauth/consent', (req, res) => {
     const authorizationId = typeof req.query.authorization_id === 'string' ? req.query.authorization_id : null;
+    logger.info('OAuth consent page requested', {
+      hasAuthorizationId: Boolean(authorizationId),
+      path: req.path,
+    });
 
     if (!authorizationId) {
       res.status(200).type('html').send(renderConsentPage({ authorizationId: null, error: 'Missing authorization request.' }));
@@ -73,7 +118,7 @@ export function createApp() {
     }
 
     try {
-      const authorization = getAuthorizationSummary(authorizationId);
+      const authorization = getAuthorizationSummary(authorizationId, env);
       res.status(200).type('html').send(
         renderConsentPage({
           authorizationId,
@@ -100,7 +145,7 @@ export function createApp() {
 
       let accessToken: string | undefined;
       if (decision === 'approve') {
-        const user = await authenticateHttpRequest(req.headers.authorization);
+        const user = await authenticateUser(req.headers.authorization);
         accessToken = user.accessToken;
       }
 
@@ -109,6 +154,13 @@ export function createApp() {
         decision,
         accessToken,
         refreshToken: typeof req.body?.refreshToken === 'string' ? req.body.refreshToken : undefined,
+        env,
+      });
+
+      logger.info('OAuth consent decision recorded', {
+        decision,
+        redirectHost: new URL(redirectUrl).host,
+        hasRefreshToken: typeof req.body?.refreshToken === 'string' && req.body.refreshToken.length > 0,
       });
 
       res.json({ redirectUrl });
@@ -119,7 +171,7 @@ export function createApp() {
 
   app.get('/api/me/nomi-key/status', async (req, res) => {
     try {
-      const user = await authenticateHttpRequest(req.headers.authorization);
+      const user = await authenticateUser(req.headers.authorization);
       const status = await store.getStatus(user.id);
       res.json(status);
     } catch (error) {
@@ -129,14 +181,14 @@ export function createApp() {
 
   app.put('/api/me/nomi-key', async (req, res) => {
     try {
-      const user = await authenticateHttpRequest(req.headers.authorization);
+      const user = await authenticateUser(req.headers.authorization);
       const apiKey = typeof req.body?.apiKey === 'string' ? req.body.apiKey.trim() : '';
       if (!apiKey) {
         res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'apiKey is required.' } });
         return;
       }
 
-      const client = new NomiApiClient({
+      const client = createNomiClient({
         apiKey,
         baseUrl: env.NOMI_API_BASE_URL,
       });
@@ -151,7 +203,7 @@ export function createApp() {
 
   app.delete('/api/me/nomi-key', async (req, res) => {
     try {
-      const user = await authenticateHttpRequest(req.headers.authorization);
+      const user = await authenticateUser(req.headers.authorization);
       await store.deleteApiKey(user.id);
       res.status(204).end();
     } catch (error) {
@@ -168,10 +220,6 @@ export function createApp() {
   });
 
   return app;
-}
-
-async function authenticateHttpRequest(authorizationHeader?: string | null): Promise<AuthenticatedUser> {
-  return authenticateBearerToken(authorizationHeader);
 }
 
 function sendRouteError(res: express.Response, error: unknown) {
@@ -196,4 +244,16 @@ function sendRouteError(res: express.Response, error: unknown) {
       message: 'Internal server error.',
     },
   });
+}
+
+function getHostFromUnknown(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  try {
+    return new URL(value).host;
+  } catch {
+    return null;
+  }
 }
