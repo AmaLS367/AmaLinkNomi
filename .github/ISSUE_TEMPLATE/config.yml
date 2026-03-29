@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Project README
+    url: https://github.com/AmaLS367/AmaLinkNomi/blob/main/README.md
+    about: Setup, deployment, auth, and MCP usage documentation.
+  - name: Production MCP endpoint docs
+    url: https://ama-link-nomi.vercel.app/
+    about: Production onboarding and bridge entrypoint.

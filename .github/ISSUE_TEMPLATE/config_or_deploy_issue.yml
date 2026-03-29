@@ -1,0 +1,70 @@
+name: Config or deploy issue
+description: Report problems in environment setup, CI/CD, Supabase, or Vercel configuration.
+title: "[Config]: "
+labels:
+  - ops
+body:
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Affected surface
+      options:
+        - local
+        - preview
+        - production
+        - GitHub Actions
+        - Supabase
+        - Vercel
+    validations:
+      required: true
+
+  - type: input
+    id: route
+    attributes:
+      label: Failing URL or route
+      description: Paste the exact route or URL involved.
+      placeholder: https://ama-link-nomi.vercel.app/oauth/consent
+    validations:
+      required: true
+
+  - type: textarea
+    id: symptom
+    attributes:
+      label: Failure description
+      description: What failed and when?
+      placeholder: OAuth callback returns to a preview domain instead of production.
+    validations:
+      required: true
+
+  - type: textarea
+    id: config-area
+    attributes:
+      label: Config area involved
+      description: Mention the system or secret area involved, but do not paste secret values.
+      placeholder: SUPABASE Site URL, Vercel production env, GitHub Actions secret names
+
+  - type: textarea
+    id: error-text
+    attributes:
+      label: Error text or logs
+      description: Paste relevant output, status codes, or job logs. Do not paste secrets.
+      render: shell
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction path
+      placeholder: |
+        1. Trigger deployment on dev
+        2. Open ...
+        3. Observe ...
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Confirmations
+      options:
+        - label: I removed or redacted secrets from everything pasted here.
+          required: true
+        - label: I checked README deployment/auth documentation first.
+          required: true

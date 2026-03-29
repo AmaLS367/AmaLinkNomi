@@ -170,6 +170,18 @@ This repo is configured for a single Vercel function entrypoint at `api/index.ts
 | `dev` | GitHub Actions release branch: test, migrate, deploy |
 | `main` | Standard Vercel Git deployment branch |
 
+### Workflow map
+
+| Workflow | Triggers | Purpose |
+|---|---|---|
+| `CI` | `pull_request`, push to `main`, push to `dev` | Quality gates for branch protection |
+| `Production Release` | push to `dev`, manual dispatch | Verify, migrate Supabase, deploy production |
+
+### Recommended required checks
+
+- `CI / verify`
+- `CI / security`
+
 ### GitHub Actions release flow
 
 The workflow [production-release.yml](.github/workflows/production-release.yml) currently auto-runs on `dev` and performs:
@@ -178,6 +190,16 @@ The workflow [production-release.yml](.github/workflows/production-release.yml) 
 2. `npm run build`
 3. `supabase db push`
 4. `vercel deploy --prod`
+
+### CI quality gates
+
+The workflow `CI` currently enforces:
+
+1. `npm test`
+2. `npm run build`
+3. `npm audit --omit=dev --audit-level=high`
+
+The security gate is intentionally limited to production dependencies and does not yet include linting, CodeQL, or formatter checks.
 
 Required GitHub secrets:
 
@@ -196,6 +218,25 @@ Before production deploys:
 2. Apply the Supabase migration
 3. Enable your Supabase sign-in method
 4. Keep Vercel function duration at 60 seconds or higher
+
+### Dependabot
+
+Dependabot runs monthly for:
+
+- `npm`
+- GitHub Actions
+
+Dependency update PRs target `main` and are intentionally rate-limited to keep review noise manageable.
+
+### Issue intake
+
+GitHub issue forms are available for:
+
+- bug reports
+- feature requests
+- config/deploy issues
+
+Blank issues are disabled so new reports arrive with enough structure to debug them quickly.
 
 ---
 

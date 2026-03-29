@@ -1,0 +1,55 @@
+name: Feature request
+description: Propose a product, platform, or DX improvement.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What problem are you trying to solve?
+      placeholder: We need a better way to ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: desired
+    attributes:
+      label: Desired behavior
+      description: What should the end result look like?
+      placeholder: The bridge should ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: user-flow
+    attributes:
+      label: Proposed user flow
+      description: Describe the ideal path for the user or operator.
+      placeholder: |
+        1. User opens ...
+        2. User signs in ...
+        3. System responds ...
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What other approaches did you consider?
+      placeholder: We could also ...
+
+  - type: textarea
+    id: success
+    attributes:
+      label: Success criteria
+      description: How will we know the feature is done?
+      placeholder: The feature is successful when ...
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Confirmations
+      options:
+        - label: I searched for existing feature requests before opening this issue.
+          required: true
