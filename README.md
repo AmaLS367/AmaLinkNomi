@@ -1,46 +1,85 @@
 # AmaNomiBridge
 
-Multi-tenant MCP gateway for the [Nomi API](https://api.nomi.ai/docs), designed for Vercel, Supabase OAuth, ChatGPT Developer Mode, Claude MCP connector, and generic remote MCP clients.
+![Node.js](https://img.shields.io/badge/Node.js-24.x-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
+![MCP](https://img.shields.io/badge/Protocol-MCP-111827?style=for-the-badge)
+![Vercel](https://img.shields.io/badge/Deploy-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
+![Supabase](https://img.shields.io/badge/Auth-Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
+![Nomi](https://img.shields.io/badge/Backend-Nomi_AI-7C3AED?style=for-the-badge)
 
+A multi-tenant MCP gateway for the [Nomi API](https://api.nomi.ai/docs), designed for Vercel, Supabase authentication, ChatGPT Developer Mode, Claude MCP connector, and generic remote MCP clients.
+
+> One bridge, many users: every user authenticates independently, stores their own Nomi key, and gets the same MCP tool surface.
+
+---
+
+## Architecture
+
+```mermaid
+graph LR
+    A[MCP Client] -->|initialize, tools/list| B[AmaNomiBridge]
+    A -->|tools/call + Bearer token| B
+    B -->|JWT verify| C[Supabase Auth]
+    B -->|read encrypted user key| D[Supabase Storage]
+    B -->|call Nomi API| E[Nomi]
+    D --> B
+    C --> B
 ```
-MCP client -> AmaNomiBridge -> user-bound encrypted Nomi key -> Nomi API
-```
 
-## What changed
+## Why this repo exists
 
-- No more shared `MCP_AUTH_TOKEN`
-- Every user connects their own Nomi API key through a small onboarding UI
-- MCP discovery stays public, but all Nomi-backed `tools/call` requests require bearer auth
-- Nomi credentials are validated before save and stored encrypted at rest
-- Optional service-mode fallback via global `NOMI_API_KEY`
+Remote MCP clients need a public HTTP endpoint, but Nomi credentials are user-specific. This project solves that by separating discovery from execution:
 
-## Tools
+- MCP discovery stays public.
+- Tool execution is protected by bearer auth.
+- Every user stores their own Nomi API key.
+- Nomi keys are encrypted before storage.
 
-| Tool | Description | Auth |
-|------|-------------|------|
-| `list_nomis` | List all Nomi characters for the authenticated user | required |
-| `get_nomi` | Get details for one Nomi | required |
-| `send_message` | Send a direct message to a Nomi | required |
-| `list_rooms` | List rooms for the authenticated user | required |
-| `send_room_message` | Send a message to a room | required |
+## Feature Snapshot
 
-Read-only tools expose `readOnlyHint` metadata.
+| Capability | What it does | Status |
+|---|---|---|
+| Public MCP discovery | `initialize`, `notifications/initialized`, `tools/list`, OAuth metadata | Ready |
+| Protected MCP execution | `tools/call` requires bearer auth | Ready |
+| User-scoped Nomi access | Every user operates with their own Nomi key | Ready |
+| Encrypted credential storage | Keys are encrypted before being persisted | Ready |
+| Onboarding UI | Login, key setup, connection status | Ready |
+| Release automation | `dev` branch runs `test -> migrate -> deploy` | Ready |
 
-## Environment
+## Available MCP Tools
 
-Copy the template and fill it:
+| Tool | Description | Access |
+|---|---|---|
+| `list_nomis` | List Nomi characters for the authenticated user | Auth required |
+| `get_nomi` | Fetch one Nomi by ID | Auth required |
+| `send_message` | Send a direct message to a Nomi | Auth required |
+| `list_rooms` | List rooms for the authenticated user | Auth required |
+| `send_room_message` | Send a message to a room | Auth required |
+
+Read-only tools expose `readOnlyHint` metadata for MCP clients that support it.
+
+---
+
+## Quick Start
+
+### 1. Clone and install
 
 ```bash
-cp .env.example .env
+git clone https://github.com/AmaLS367/AmaLinkNomi.git
+cd AmaLinkNomi
+npm install
 ```
 
-Required values:
+### 2. Create `.env`
+
+Use [.env.example](.env.example) as the template.
+
+Required variables:
 
 ```env
 NOMI_API_KEY=7f9c3f69-385f-4a22-afe7-d7b50852cd06
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=...
-SUPABASE_SERVICE_ROLE_KEY=...
+SUPABASE_ANON_KEY=your-public-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 SUPABASE_JWT_AUDIENCE=authenticated
 ```
 
@@ -53,84 +92,92 @@ NOMI_KEY_ENCRYPTION_KEY=any-secret-string
 NOMI_API_BASE_URL=https://api.nomi.ai
 ```
 
-If `NOMI_KEY_ENCRYPTION_KEY` is omitted, encrypted storage derives its key from `NOMI_API_KEY`. A plain UUID-style Nomi key also works as the seed.
+If `NOMI_KEY_ENCRYPTION_KEY` is omitted, encrypted storage derives its key from `NOMI_API_KEY`.
 
-## Supabase setup
+### 3. Apply the Supabase migration
 
-1. Provision Supabase Auth.
-2. Apply the SQL migration in [supabase/migrations/20260329_create_user_nomi_credentials.sql](supabase/migrations/20260329_create_user_nomi_credentials.sql).
-3. Configure your preferred login method in Supabase Auth. The built-in onboarding UI supports Google OAuth and magic-link email login.
-4. In Supabase Auth URL configuration, set your deployed app URL as the Site URL and add every allowed callback origin to Redirect URLs. If this is misconfigured, auth flows often bounce to `http://localhost:3000`.
+Run the SQL from [20260329_create_user_nomi_credentials.sql](supabase/migrations/20260329_create_user_nomi_credentials.sql) in Supabase SQL Editor.
 
-## Local development
+### 4. Configure Supabase Auth
+
+- Enable at least one sign-in method.
+- The UI supports Google OAuth and magic-link email login.
+- Set the correct `Site URL` and `Redirect URLs`.
+
+If this is misconfigured, auth redirects often bounce to `http://localhost:3000`.
+
+### 5. Start locally
 
 ```bash
-npm install
 npm run dev
 ```
 
-Useful routes:
+Useful local routes:
 
-- `http://localhost:3000/` - onboarding home
-- `http://localhost:3000/settings` - Nomi key settings
-- `http://localhost:3000/status` - connection status
-- `http://localhost:3000/api/mcp` - MCP endpoint
-- `http://localhost:3000/.well-known/oauth-protected-resource/api/mcp` - protected resource metadata
+| Route | Purpose |
+|---|---|
+| `http://localhost:3000/` | Onboarding / dashboard |
+| `http://localhost:3000/settings` | Nomi key management |
+| `http://localhost:3000/status` | Technical connection status |
+| `http://localhost:3000/api/mcp` | MCP endpoint |
+| `http://localhost:3000/.well-known/oauth-protected-resource/api/mcp` | OAuth protected resource metadata |
 
-## MCP auth model
+---
 
-The server uses a mixed surface:
+## Authentication Model
 
-- Public:
-  - `initialize`
-  - `notifications/initialized`
-  - `tools/list`
-  - OAuth discovery metadata
-- Protected:
-  - every `tools/call`
+The bridge uses a mixed MCP surface:
 
-Tool calls require `Authorization: Bearer <Supabase access token>`.
+| Request type | Auth |
+|---|---|
+| `initialize` | Public |
+| `notifications/initialized` | Public |
+| `tools/list` | Public |
+| OAuth metadata | Public |
+| every `tools/call` | Bearer token required |
 
-If a client calls a protected MCP method without a token, the server responds with `401` and a `WWW-Authenticate` header pointing to the protected resource metadata URL.
+Protected requests expect:
 
-## Onboarding flow
-
-1. Open `/`
-2. Sign in through Google or Supabase magic link
-3. Open `/settings`
-4. Paste your personal Nomi API key
-5. The server validates the key against Nomi before storing it
-6. The key is encrypted and stored in `user_nomi_credentials`
-
-The MCP tools do not accept or store Nomi API keys.
-
-## Vercel deployment
-
-The repo is configured for a single Node function entrypoint at `api/index.ts`.
-
-```bash
-vercel
+```http
+Authorization: Bearer <supabase-access-token>
 ```
 
-Before deploying:
+If a client calls a protected MCP method without a valid token, the server responds with `401` and the appropriate `WWW-Authenticate` header.
 
-1. Set the environment variables from `.env.example`
-2. Apply the Supabase migration
-3. Enable a Supabase sign-in method
-4. If you want Google login, enable the Google provider in Supabase Auth and configure the Google OAuth client there
-5. Keep Vercel Function max duration at 60 seconds or higher
+## Onboarding Flow
 
-## GitHub Actions release flow
+1. Open `/`
+2. Sign in with Google or a Supabase magic link
+3. Open `/settings`
+4. Save your personal Nomi API key
+5. The bridge validates it against Nomi before storing it
+6. The encrypted key is stored in `user_nomi_credentials`
 
-The repo includes [production-release.yml](.github/workflows/production-release.yml) for a strict release order:
+The MCP tools themselves never accept or persist Nomi API keys directly.
 
-1. run tests and build
-2. apply Supabase migrations
-3. deploy to Vercel production
+---
 
-The workflow auto-runs on `dev`. Keep `main` reserved for the standard Vercel Git deployment flow.
+## Deployment Model
 
-Configure these GitHub repository secrets before using it:
+This repo is configured for a single Vercel function entrypoint at `api/index.ts`.
+
+### Branch strategy
+
+| Branch | Role |
+|---|---|
+| `dev` | GitHub Actions release branch: test, migrate, deploy |
+| `main` | Standard Vercel Git deployment branch |
+
+### GitHub Actions release flow
+
+The workflow [production-release.yml](.github/workflows/production-release.yml) currently auto-runs on `dev` and performs:
+
+1. `npm test`
+2. `npm run build`
+3. `supabase db push`
+4. `vercel deploy --prod`
+
+Required GitHub secrets:
 
 - `SUPABASE_ACCESS_TOKEN`
 - `SUPABASE_PROJECT_REF`
@@ -139,17 +186,66 @@ Configure these GitHub repository secrets before using it:
 - `VERCEL_ORG_ID`
 - `VERCEL_PROJECT_ID`
 
-If you later move this workflow back to `main`, disable automatic Vercel production deploys from the Git integration. Otherwise Vercel may deploy `main` before the migration job finishes, which defeats the ordered release flow.
+### Vercel prerequisites
 
-## Notes for clients
+Before production deploys:
 
-- ChatGPT Developer Mode: point it to `https://<your-domain>/api/mcp`
+1. Set the environment variables from `.env.example`
+2. Apply the Supabase migration
+3. Enable your Supabase sign-in method
+4. Keep Vercel function duration at 60 seconds or higher
+
+---
+
+## Project Structure
+
+```text
+AmaLink Nomi/
+├── api/
+│   └── index.ts
+├── src/
+│   ├── adapters/vercel/
+│   ├── app/
+│   ├── auth/
+│   ├── config/
+│   ├── nomi/
+│   ├── security/
+│   ├── storage/
+│   ├── supabase/
+│   ├── tools/
+│   └── ui/
+├── supabase/
+│   └── migrations/
+├── test/
+├── vercel.json
+└── .github/workflows/
+```
+
+## Security Notes
+
+- Raw Nomi keys are never logged.
+- Raw bearer tokens are never logged.
+- User data is derived from token subject, not MCP tool arguments.
+- Nomi keys are stored encrypted at rest.
+
+## Troubleshooting
+
+### `500` on `/api/me/nomi-key/status` or `/api/me/nomi-key`
+
+Most likely cause: the `user_nomi_credentials` table migration was not applied.
+
+### Login redirects to `localhost:3000`
+
+Your Supabase Auth URL configuration is pointing to the wrong site URL or missing the deployed callback origin.
+
+### Build succeeds but Vercel expects `public`
+
+This repo uses a function-based Vercel deployment. The explicit `outputDirectory` in [vercel.json](vercel.json) prevents static-output confusion.
+
+---
+
+## Client Notes
+
+- ChatGPT Developer Mode: use `https://<your-domain>/api/mcp`
 - Claude MCP connector: same endpoint, same bearer auth model
-- Generic clients: use the same remote MCP endpoint and OAuth discovery metadata
-
-## Security
-
-- Raw Nomi keys are never logged
-- Raw bearer tokens are never logged
-- Nomi keys are stored encrypted at rest
-- User data access is derived from the bearer token subject, not from MCP tool arguments
+- Generic remote MCP clients: same endpoint, same OAuth metadata
