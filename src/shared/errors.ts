@@ -29,3 +29,24 @@ export class NotFoundError extends AppError {
     this.name = 'NotFoundError';
   }
 }
+
+export class ConfigurationError extends AppError {
+  constructor(message: string) {
+    super(message, 'CONFIGURATION_ERROR', 500);
+    this.name = 'ConfigurationError';
+  }
+}
+
+export class CredentialNotConfiguredError extends AppError {
+  constructor(message = 'Nomi key not configured.') {
+    super(message, 'NOMI_KEY_NOT_CONFIGURED', 412);
+    this.name = 'CredentialNotConfiguredError';
+  }
+}
+
+export class CredentialRejectedError extends AppError {
+  constructor(message = 'Reconnect or replace your Nomi key.') {
+    super(message, 'NOMI_KEY_REJECTED', 401);
+    this.name = 'CredentialRejectedError';
+  }
+}

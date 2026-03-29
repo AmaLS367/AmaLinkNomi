@@ -7,16 +7,19 @@
     "build": "tsc",
     "start": "node dist/src/app/bootstrap.js",
     "dev": "node --require ts-node/register src/app/bootstrap.ts",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "node --import tsx --test test/*.test.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@supabase/supabase-js": "^2.57.4",
     "@modelcontextprotocol/sdk": "^1.28.0",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "jose": "^6.1.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
