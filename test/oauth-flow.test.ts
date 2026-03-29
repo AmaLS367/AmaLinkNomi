@@ -55,6 +55,7 @@ test('oauth consent page bootstraps PKCE callback exchange and Google sign-in', 
 
     const html = await response.text();
     assert.match(html, /exchangeCodeForSession/);
+    assert.match(html, /detectSessionInUrl:\s*false/);
     assert.match(html, /Continue with Google/);
     assert.match(html, /AmaNomiBridge/);
   } finally {
@@ -66,6 +67,7 @@ test('onboarding shell exposes Google login alongside magic links', () => {
   const html = renderShell('home');
   assert.match(html, /Continue with Google/);
   assert.match(html, /signInWithOAuth/);
+  assert.match(html, /detectSessionInUrl:\s*false/);
 });
 
 test('local OAuth flow completes with stubbed authentication and returns tokens', async () => {

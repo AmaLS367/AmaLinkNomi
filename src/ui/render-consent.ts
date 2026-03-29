@@ -264,7 +264,7 @@ export function renderConsentPage(input: {
         const client = createClient(config.supabaseUrl, config.supabaseAnonKey, {
           auth: {
             flowType: 'pkce',
-            detectSessionInUrl: true,
+            detectSessionInUrl: false,
             persistSession: true,
             autoRefreshToken: true,
           },
