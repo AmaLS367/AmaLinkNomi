@@ -386,9 +386,38 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
         border-radius: 10px;
       }
       ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.15); }
+
+      /* Summary Widget */
+      .summary-widget {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2.5rem;
+      }
+      
+      .summary-item {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--panel-border);
+        border-radius: 18px;
+        padding: 1.5rem;
+        text-align: center;
+      }
+
+      .summary-item .label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+      }
+
+      .summary-item .big-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--accent);
+      }
     </style>
   </head>
-  <body>
+  <body data-view="${activeView}">
     <div class="container">
       <header>
         <div class="logo-badge">
@@ -407,18 +436,13 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
 
       <div class="main-grid">
         <main class="glass-card">
+          <!-- Auth Panel (Always shows if not logged in) -->
           <div id="auth-panel">
             <h2>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
               Secure Login
             </h2>
-            <p style="color: var(--text-secondary); margin-bottom: 2rem;">Sign in with Google or request a magic link to access your personal bridge configuration.</p>
-            <div class="btn-group" style="margin-top: 0; margin-bottom: 1.25rem;">
-              <button id="google-login" type="button" class="btn-primary">
-                Continue with Google
-              </button>
-            </div>
-            <p style="font-size: 0.8125rem; color: var(--text-secondary); margin: 0 0 1.5rem;">If Google login is configured in Supabase, this is the preferred flow.</p>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">Sign in with your email to access your personal bridge configuration.</p>
             <form id="login-form">
               <div class="form-group">
                 <label for="email">Email Address</label>
@@ -433,22 +457,37 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
             </form>
           </div>
 
-          <div id="session-panel" class="hidden">
-            <h2>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              Active Session
-            </h2>
-            <div id="session-email" class="status-pill">Loading session...</div>
-            <div class="btn-group">
-              <button id="refresh-status" type="button" class="btn-secondary">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                Refresh
-              </button>
-              <button id="sign-out" type="button" class="btn-secondary">Sign Out</button>
+          <!-- Home / Dashboard View -->
+          <div id="home-view" class="hidden">
+            <h2>Welcome Back</h2>
+            <div id="session-panel" class="hidden" style="margin-bottom: 2rem;">
+               <div id="session-email" class="status-pill">Loading session...</div>
+               <div class="btn-group" style="margin-top: 1rem;">
+                 <button id="sign-out" type="button" class="btn-secondary">Sign Out</button>
+               </div>
+            </div>
+
+            <div class="summary-widget">
+              <div class="summary-item">
+                <div class="label">Nomi Key</div>
+                <div id="summary-key-status" class="big-value">—</div>
+              </div>
+              <div class="summary-item">
+                <div class="label">Bridge Status</div>
+                <div id="summary-bridge-status" class="big-value">—</div>
+              </div>
+            </div>
+
+            <div class="status-card" style="margin-top: 1rem;">
+               <strong>Ready to use</strong>
+               <p style="color: var(--text-secondary); margin: 0.5rem 0 0;">
+                 Your bridge is configured. You can now use the MCP endpoint in your favorite LLM client.
+               </p>
             </div>
           </div>
 
-          <div id="settings-panel" class="${activeView === 'settings' ? '' : 'hidden'}" style="margin-top: 2rem; border-top: 1px solid var(--panel-border); padding-top: 2rem;">
+          <!-- Settings View -->
+          <div id="settings-view" class="hidden">
             <h2>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               Nomi Integration
@@ -457,7 +496,7 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
               <div class="form-group">
                 <label for="nomi-key">Nomi API Key</label>
                 <textarea id="nomi-key" placeholder="Paste your API key here..."></textarea>
-                <p style="font-size: 0.75rem; color: var(--text-secondary); mt: 0.5rem;">Your key is encrypted before storage.</p>
+                <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">Your key is encrypted before storage. We only store it to make requests on your behalf.</p>
               </div>
               <div class="btn-group">
                 <button type="submit" class="btn-primary">Save Changes</button>
@@ -466,10 +505,11 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
             </form>
           </div>
 
-          <div id="status-panel" class="${activeView === 'status' ? '' : 'hidden'}" style="margin-top: 2rem; border-top: 1px solid var(--panel-border); padding-top: 2rem;">
+          <!-- Status View -->
+          <div id="status-view" class="hidden">
             <h2>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-              Connection Status
+              Technical Status
             </h2>
             <div class="status-grid">
               <div class="status-card">
@@ -487,9 +527,15 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
               <div class="status-card" style="grid-column: 1 / -1;">
                 <strong>MCP Endpoint</strong>
                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
-                  <code id="mcp-endpoint" style="flex: 1;">${'${window.location.origin}/api/mcp'}</code>
+                  <code id="mcp-endpoint" style="flex: 1; padding: 0.75rem; display: block;">${'${window.location.origin}/api/mcp'}</code>
                 </div>
               </div>
+            </div>
+            <div class="btn-group" style="margin-top: 1.5rem;">
+               <button id="refresh-status" type="button" class="btn-secondary">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                  Refresh Connection
+               </button>
             </div>
           </div>
 
@@ -525,9 +571,9 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
           </section>
 
           <section class="glass-card" style="padding: 2rem; background: linear-gradient(135deg, rgba(56, 189, 248, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);">
-            <h3 style="margin-top: 0; font-size: 1.1rem; color: var(--accent);">Developer Note</h3>
+            <h3 style="margin-top: 0; font-size: 1.1rem; color: var(--accent);">OAuth Bridge</h3>
             <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0;">
-              This bridge implements the Model Context Protocol (MCP), allowing seamless tool discovery and execution.
+              This proxy adds OAuth2 compatibility to standard MCP tools, making them usable in multi-user environments.
             </p>
           </section>
         </aside>
@@ -539,20 +585,27 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
 
       const messageNode = document.getElementById('message');
       const authPanel = document.getElementById('auth-panel');
+      const homeView = document.getElementById('home-view');
+      const settingsView = document.getElementById('settings-view');
+      const statusView = document.getElementById('status-view');
       const sessionPanel = document.getElementById('session-panel');
-      const settingsPanel = document.getElementById('settings-panel');
-      const statusPanel = document.getElementById('status-panel');
       const sessionEmail = document.getElementById('session-email');
+      
       const configuredValue = document.getElementById('configured-value');
       const last4Value = document.getElementById('last4-value');
       const validatedValue = document.getElementById('validated-value');
       const mcpEndpoint = document.getElementById('mcp-endpoint');
+      
+      const summaryKeyStatus = document.getElementById('summary-key-status');
+      const summaryBridgeStatus = document.getElementById('summary-bridge-status');
+
       const loginForm = document.getElementById('login-form');
-      const googleLoginButton = document.getElementById('google-login');
       const keyForm = document.getElementById('key-form');
       const deleteKeyButton = document.getElementById('delete-key');
       const refreshStatusButton = document.getElementById('refresh-status');
       const signOutButton = document.getElementById('sign-out');
+
+      const activeView = document.body.dataset.view;
 
       mcpEndpoint.textContent = window.location.origin + '/api/mcp';
 
@@ -572,7 +625,6 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
 
         const config = await configResponse.json();
         client = createClient(config.supabaseUrl, config.supabaseAnonKey);
-        await completeOauthRedirect();
         const currentSession = await client.auth.getSession();
         session = currentSession.data.session;
         renderSession();
@@ -580,14 +632,12 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
         client.auth.onAuthStateChange((_event, nextSession) => {
           session = nextSession;
           renderSession();
-          refreshStatus().catch((error) => {
-            console.error(error);
-            setMessage(error.message || 'Failed to refresh status.', true);
-          });
+          if (session) {
+            refreshStatus().catch(console.error);
+          }
         });
 
         loginForm?.addEventListener('submit', onLoginSubmit);
-        googleLoginButton?.addEventListener('click', onGoogleLogin);
         keyForm?.addEventListener('submit', onSaveKey);
         deleteKeyButton?.addEventListener('click', onDeleteKey);
         refreshStatusButton?.addEventListener('click', () => refreshStatus());
@@ -599,30 +649,6 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
         if (session) {
           await refreshStatus();
         }
-      }
-
-      async function completeOauthRedirect() {
-        const url = new URL(window.location.href);
-        const errorDescription = url.searchParams.get('error_description');
-        if (errorDescription) {
-          throw new Error(errorDescription);
-        }
-
-        const code = url.searchParams.get('code');
-        if (!code) {
-          return;
-        }
-
-        const { error } = await client.auth.exchangeCodeForSession(code);
-        if (error) {
-          throw error;
-        }
-
-        url.searchParams.delete('code');
-        url.searchParams.delete('error');
-        url.searchParams.delete('error_code');
-        url.searchParams.delete('error_description');
-        window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
       }
 
       async function onLoginSubmit(event) {
@@ -646,27 +672,6 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
         }
 
         setMessage('✨ Magic link sent! Check your inbox to continue.');
-      }
-
-      async function onGoogleLogin() {
-        const { data, error } = await client.auth.signInWithOAuth({
-          provider: 'google',
-          options: {
-            redirectTo: window.location.origin + window.location.pathname,
-          },
-        });
-
-        if (error) {
-          setMessage(error.message, true);
-          return;
-        }
-
-        if (!data?.url) {
-          setMessage('Google sign-in could not be started.', true);
-          return;
-        }
-
-        window.location.assign(data.url);
       }
 
       async function onSaveKey(event) {
@@ -695,6 +700,8 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
       }
 
       async function onDeleteKey() {
+        if (!confirm('Are you sure you want to delete your Nomi key?')) return;
+        
         const response = await authedFetch('/api/me/nomi-key', {
           method: 'DELETE',
         });
@@ -710,12 +717,7 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
       }
 
       async function refreshStatus() {
-        if (!session) {
-          configuredValue.textContent = 'Login required';
-          last4Value.textContent = 'Login required';
-          validatedValue.textContent = 'Login required';
-          return;
-        }
+        if (!session) return;
 
         const response = await authedFetch('/api/me/nomi-key/status');
         const payload = await response.json();
@@ -724,9 +726,19 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
           return;
         }
 
-        configuredValue.textContent = payload.configured ? 'Active' : 'Not Setup';
+        const isOk = payload.configured;
+        
+        // Update Status View
+        configuredValue.textContent = isOk ? 'Active' : 'Not Setup';
+        configuredValue.style.color = isOk ? 'var(--success)' : 'var(--danger)';
         last4Value.textContent = payload.last4 ? '•••• ' + payload.last4 : '—';
         validatedValue.textContent = payload.validatedAt ? new Date(payload.validatedAt).toLocaleString() : '—';
+        
+        // Update Home View
+        summaryKeyStatus.textContent = isOk ? 'Linked' : 'Missing';
+        summaryKeyStatus.style.color = isOk ? 'var(--success)' : 'var(--danger)';
+        summaryBridgeStatus.textContent = isOk ? 'Ready' : 'Paused';
+        summaryBridgeStatus.style.color = isOk ? 'var(--success)' : 'var(--text-secondary)';
       }
 
       async function authedFetch(input, init = {}) {
@@ -743,14 +755,18 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
         if (session) {
           authPanel.classList.add('hidden');
           sessionPanel.classList.remove('hidden');
-          settingsPanel.classList.remove('hidden');
-          statusPanel.classList.remove('hidden');
           sessionEmail.textContent = session.user.email || session.user.id;
+          
+          // Show view based on URL
+          homeView.classList.toggle('hidden', activeView !== 'home');
+          settingsView.classList.toggle('hidden', activeView !== 'settings');
+          statusView.classList.toggle('hidden', activeView !== 'status');
         } else {
           authPanel.classList.remove('hidden');
+          homeView.classList.add('hidden');
+          settingsView.classList.add('hidden');
+          statusView.classList.add('hidden');
           sessionPanel.classList.add('hidden');
-          settingsPanel.classList.add('hidden');
-          statusPanel.classList.add('hidden');
         }
       }
 
@@ -765,6 +781,13 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
             messageNode.style.opacity = '1';
             messageNode.style.transform = 'translateY(0)';
           }, 10);
+          
+          // Auto-hide success messages after 5s
+          if (!isError) {
+            setTimeout(() => {
+              if (messageNode.textContent === message) setMessage('');
+            }, 5000);
+          }
         } else {
           messageNode.style.opacity = '0';
           messageNode.style.transform = 'translateY(10px)';

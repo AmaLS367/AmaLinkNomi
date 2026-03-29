@@ -78,7 +78,7 @@ export class UserNomiCredentialsStore {
       .single();
 
     if (result.error) {
-      throw result.error;
+      throw mapSupabaseStorageError(result.error);
     }
 
     return {
@@ -93,7 +93,7 @@ export class UserNomiCredentialsStore {
     const supabase = getSupabaseServiceClient();
     const result = await supabase.from('user_nomi_credentials').delete().eq('user_id', userId);
     if (result.error) {
-      throw result.error;
+      throw mapSupabaseStorageError(result.error);
     }
   }
 
@@ -106,11 +106,23 @@ export class UserNomiCredentialsStore {
       .maybeSingle<StoredCredentialRow>();
 
     if (result.error) {
-      throw result.error;
+      throw mapSupabaseStorageError(result.error);
     }
 
     return result.data;
   }
+}
+
+export function mapSupabaseStorageError(error: unknown): Error {
+  const code = typeof (error as { code?: unknown })?.code === 'string' ? (error as { code: string }).code : null;
+
+  if (code === 'PGRST205' || code === '42P01') {
+    return new ConfigurationError(
+      'Supabase table user_nomi_credentials is missing. Apply the Supabase migration for user_nomi_credentials before using onboarding.'
+    );
+  }
+
+  return error instanceof Error ? error : new Error('Unexpected Supabase storage error.');
 }
 
 function resolveCredentialSeed(): string {
