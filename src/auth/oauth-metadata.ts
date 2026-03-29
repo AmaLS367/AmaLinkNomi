@@ -1,21 +1,22 @@
 import type { IncomingMessage } from 'http';
 import { getOAuthProtectedResourceMetadataUrl } from '@modelcontextprotocol/sdk/server/auth/router.js';
 import { OAUTH_SCOPES_SUPPORTED } from './local-oauth-provider';
+import type { AppEnv } from '../config/env';
 
-export function buildProtectedResourceMetadata(req: IncomingMessage) {
-  const resourceServerUrl = new URL('/api/mcp', getRequestOrigin(req));
+export function buildProtectedResourceMetadata(req: IncomingMessage, env?: AppEnv) {
+  const resourceServerUrl = new URL('/api/mcp', getRequestOrigin(req, env));
 
   return {
     resource: resourceServerUrl.href,
-    authorization_servers: [getRequestOrigin(req)],
+    authorization_servers: [getRequestOrigin(req, env)],
     scopes_supported: OAUTH_SCOPES_SUPPORTED,
     resource_name: 'AmaNomiBridge',
-    resource_documentation: new URL('/', getRequestOrigin(req)).href,
+    resource_documentation: new URL('/', getRequestOrigin(req, env)).href,
   };
 }
 
-export function buildAuthorizationServerMetadata(req: IncomingMessage) {
-  const issuer = getRequestOrigin(req);
+export function buildAuthorizationServerMetadata(req: IncomingMessage, env?: AppEnv) {
+  const issuer = getRequestOrigin(req, env);
   return {
     issuer,
     authorization_endpoint: `${issuer}/authorize`,
@@ -29,16 +30,22 @@ export function buildAuthorizationServerMetadata(req: IncomingMessage) {
   };
 }
 
-export function buildWwwAuthenticateHeader(req: IncomingMessage): string {
-  const resourceMetadataUrl = getOAuthProtectedResourceMetadataUrl(new URL('/api/mcp', getRequestOrigin(req)));
+export function buildWwwAuthenticateHeader(req: IncomingMessage, env?: AppEnv): string {
+  const resourceMetadataUrl = getOAuthProtectedResourceMetadataUrl(new URL('/api/mcp', getRequestOrigin(req, env)));
   return `Bearer resource_metadata="${resourceMetadataUrl}", scope="${OAUTH_SCOPES_SUPPORTED.join(' ')}"`;
 }
 
-export function getRequestOrigin(req: IncomingMessage): string {
+export function getRequestOrigin(req: IncomingMessage, env?: Pick<AppEnv, 'APP_BASE_URL'>): string {
   const forwardedProto = req.headers['x-forwarded-proto'];
   const forwardedHost = req.headers['x-forwarded-host'];
   const host = forwardedHost || req.headers.host || 'localhost:3000';
   const normalizedHost = host.toString();
+  const canonicalOrigin = getCanonicalOrigin(env);
+
+  if (canonicalOrigin && !isLocalHost(normalizedHost)) {
+    return canonicalOrigin;
+  }
+
   const protocol =
     typeof forwardedProto === 'string'
       ? forwardedProto
@@ -47,4 +54,16 @@ export function getRequestOrigin(req: IncomingMessage): string {
         : 'https';
 
   return `${protocol}://${host}`;
+}
+
+function getCanonicalOrigin(env?: Pick<AppEnv, 'APP_BASE_URL'>): string | null {
+  if (!env?.APP_BASE_URL) {
+    return null;
+  }
+
+  return env.APP_BASE_URL.replace(/\/$/, '');
+}
+
+function isLocalHost(host: string): boolean {
+  return host.includes('localhost') || host.includes('127.0.0.1');
 }

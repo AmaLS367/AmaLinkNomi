@@ -249,6 +249,7 @@ export function renderConsentPage(input: {
       const approveButton = document.getElementById('approve');
       const denyButton = document.getElementById('deny');
       let submissionInFlight = false;
+      let appBaseUrl = window.location.origin;
 
       if (authorizationId) {
         boot().catch((error) => setStatus(error?.message || 'Failed to initialize consent.', true));
@@ -261,6 +262,7 @@ export function renderConsentPage(input: {
         }
 
         const config = await configResponse.json();
+        appBaseUrl = config.appBaseUrl || window.location.origin;
         const client = createClient(config.supabaseUrl, config.supabaseAnonKey, {
           auth: {
             flowType: 'pkce',
@@ -289,7 +291,7 @@ export function renderConsentPage(input: {
           const { error } = await client.auth.signInWithOtp({
             email,
             options: {
-              emailRedirectTo: window.location.href,
+              emailRedirectTo: buildAppUrl(appBaseUrl, window.location.pathname + window.location.search).href,
             },
           });
 
@@ -300,7 +302,7 @@ export function renderConsentPage(input: {
           const { error } = await client.auth.signInWithOAuth({
             provider: 'google',
             options: {
-              redirectTo: window.location.href,
+              redirectTo: buildAppUrl(appBaseUrl, window.location.pathname + window.location.search).href,
             },
           });
 
@@ -393,7 +395,7 @@ export function renderConsentPage(input: {
           throw new Error(error.message || 'Supabase sign-in callback failed.');
         }
 
-        const cleaned = new URL(window.location.origin + window.location.pathname);
+        const cleaned = buildAppUrl(appBaseUrl, window.location.pathname);
         if (authorizationId) {
           cleaned.searchParams.set('authorization_id', authorizationId);
         }
@@ -422,6 +424,10 @@ export function renderConsentPage(input: {
         statusNode.textContent = message;
         statusNode.classList.toggle('error', Boolean(isError));
         statusNode.classList.toggle('success', Boolean(isSuccess));
+      }
+
+      function buildAppUrl(baseUrl, pathWithQuery) {
+        return new URL(pathWithQuery, baseUrl.endsWith('/') ? baseUrl : baseUrl + '/');
       }
     </script>
   </body>

@@ -615,6 +615,7 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
 
       let client;
       let session = null;
+      let appBaseUrl = window.location.origin;
 
       boot().catch((error) => {
         console.error(error);
@@ -628,6 +629,8 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
         }
 
         const config = await configResponse.json();
+        appBaseUrl = config.appBaseUrl || window.location.origin;
+        mcpEndpoint.textContent = buildAppUrl(appBaseUrl, '/api/mcp').href;
         client = createClient(config.supabaseUrl, config.supabaseAnonKey, {
           auth: {
             flowType: 'pkce',
@@ -676,7 +679,7 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
         const { error } = await client.auth.signInWithOtp({
           email,
           options: {
-            emailRedirectTo: window.location.origin + window.location.pathname,
+            emailRedirectTo: buildAppUrl(appBaseUrl, window.location.pathname).href,
           },
         });
 
@@ -692,7 +695,7 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
         const { error } = await client.auth.signInWithOAuth({
           provider: 'google',
           options: {
-            redirectTo: window.location.origin + window.location.pathname,
+            redirectTo: buildAppUrl(appBaseUrl, window.location.pathname).href,
           },
         });
 
@@ -717,7 +720,7 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
           throw new Error(error.message || 'Supabase sign-in callback failed.');
         }
 
-        const cleaned = new URL(window.location.origin + window.location.pathname);
+        const cleaned = buildAppUrl(appBaseUrl, window.location.pathname);
         window.history.replaceState({}, '', cleaned.toString());
         setMessage('Signed in successfully.');
       }
@@ -840,6 +843,10 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
           messageNode.style.opacity = '0';
           messageNode.style.transform = 'translateY(10px)';
         }
+      }
+
+      function buildAppUrl(baseUrl, pathWithQuery) {
+        return new URL(pathWithQuery, baseUrl.endsWith('/') ? baseUrl : baseUrl + '/');
       }
     </script>
   </body>

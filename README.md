@@ -77,6 +77,7 @@ Required variables:
 
 ```env
 NOMI_API_KEY=7f9c3f69-385f-4a22-afe7-d7b50852cd06
+APP_BASE_URL=https://ama-link-nomi.vercel.app
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-public-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
@@ -93,6 +94,7 @@ NOMI_API_BASE_URL=https://api.nomi.ai
 ```
 
 If `NOMI_KEY_ENCRYPTION_KEY` is omitted, encrypted storage derives its key from `NOMI_API_KEY`.
+If `APP_BASE_URL` is set, preview-host onboarding and consent requests are redirected back to that canonical origin, and browser auth redirects use it instead of the current host.
 
 ### 3. Apply the Supabase migration
 
@@ -237,6 +239,10 @@ Most likely cause: the `user_nomi_credentials` table migration was not applied.
 ### Login redirects to `localhost:3000`
 
 Your Supabase Auth URL configuration is pointing to the wrong site URL or missing the deployed callback origin.
+
+### Login or consent bounces to an old Vercel preview URL
+
+Set `APP_BASE_URL` to your production origin, for example `https://ama-link-nomi.vercel.app`, in both local env and Vercel project environment variables. The UI then redirects preview-host onboarding and consent pages back to the canonical domain and uses that canonical URL for Supabase email and Google redirects.
 
 ### Build succeeds but Vercel expects `public`
 

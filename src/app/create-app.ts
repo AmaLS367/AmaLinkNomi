@@ -4,7 +4,11 @@ import { clientRegistrationHandler } from '@modelcontextprotocol/sdk/server/auth
 import { tokenHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/token.js';
 import { getPublicEnv, getEnv, type AppEnv } from '../config/env';
 import { authenticateBearerToken, type AuthenticatedUser } from '../auth/token-auth';
-import { buildAuthorizationServerMetadata, buildProtectedResourceMetadata } from '../auth/oauth-metadata';
+import {
+  buildAuthorizationServerMetadata,
+  buildProtectedResourceMetadata,
+  getRequestOrigin,
+} from '../auth/oauth-metadata';
 import {
   buildConsentRedirect,
   getAuthorizationSummary,
@@ -18,7 +22,7 @@ import { renderConsentPage } from '../ui/render-consent';
 import { renderShell } from '../ui/render-shell';
 import { handleMcpRequest } from '../adapters/vercel/handler';
 
-type PublicEnv = Pick<AppEnv, 'SUPABASE_URL' | 'SUPABASE_ANON_KEY'>;
+type PublicEnv = Pick<AppEnv, 'SUPABASE_URL' | 'SUPABASE_ANON_KEY' | 'APP_BASE_URL'>;
 type CredentialStore = Pick<UserNomiCredentialsStore, 'getStatus' | 'upsertApiKey' | 'deleteApiKey'>;
 
 export interface CreateAppOptions {
@@ -33,7 +37,17 @@ export interface CreateAppOptions {
 export function createApp(options: CreateAppOptions = {}) {
   const app = express();
   const env = options.env ?? getEnv();
-  const publicEnv = options.publicEnv ?? getPublicEnv();
+  const defaultPublicEnv = options.env
+    ? {
+        SUPABASE_URL: env.SUPABASE_URL,
+        SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY,
+        APP_BASE_URL: env.APP_BASE_URL,
+      }
+    : getPublicEnv();
+  const publicEnv = {
+    ...defaultPublicEnv,
+    ...options.publicEnv,
+  };
   const authenticateUser = options.authenticateUser ?? authenticateBearerToken;
   const store = options.credentialsStore ?? new UserNomiCredentialsStore();
   const oauthProvider =
@@ -46,6 +60,20 @@ export function createApp(options: CreateAppOptions = {}) {
     options.createNomiClient ?? ((input: { apiKey: string; baseUrl: string }) => new NomiApiClient(input));
 
   app.use(express.json());
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' || !env.APP_BASE_URL || !shouldRedirectToCanonicalHost(req.path)) {
+      next();
+      return;
+    }
+
+    const requestOrigin = getRequestOrigin(req, { APP_BASE_URL: undefined });
+    if (isLocalOrigin(requestOrigin) || requestOrigin === env.APP_BASE_URL.replace(/\/$/, '')) {
+      next();
+      return;
+    }
+
+    res.redirect(307, new URL(req.originalUrl || req.url, env.APP_BASE_URL).href);
+  });
 
   app.get('/', (_req, res) => {
     res.status(200).type('html').send(renderShell('home'));
@@ -63,15 +91,16 @@ export function createApp(options: CreateAppOptions = {}) {
     res.json({
       supabaseUrl: publicEnv.SUPABASE_URL,
       supabaseAnonKey: publicEnv.SUPABASE_ANON_KEY,
+      appBaseUrl: publicEnv.APP_BASE_URL ?? null,
     });
   });
 
   app.get('/.well-known/oauth-protected-resource/api/mcp', (req, res) => {
-    res.json(buildProtectedResourceMetadata(req));
+    res.json(buildProtectedResourceMetadata(req, env));
   });
 
   app.get('/.well-known/oauth-authorization-server', (req, res) => {
-    res.json(buildAuthorizationServerMetadata(req));
+    res.json(buildAuthorizationServerMetadata(req, env));
   });
 
   app.use('/authorize', (req, _res, next) => {
@@ -220,6 +249,14 @@ export function createApp(options: CreateAppOptions = {}) {
   });
 
   return app;
+}
+
+function shouldRedirectToCanonicalHost(path: string): boolean {
+  return path === '/' || path === '/settings' || path === '/status' || path === '/oauth/consent';
+}
+
+function isLocalOrigin(origin: string): boolean {
+  return origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1');
 }
 
 function sendRouteError(res: express.Response, error: unknown) {

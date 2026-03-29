@@ -19,6 +19,7 @@ const fakeEnv: AppEnv = {
   PORT: '3000',
   NOMI_API_BASE_URL: 'https://api.nomi.ai',
   NOMI_API_KEY: '7f9c3f69-385f-4a22-afe7-d7b50852cd06',
+  APP_BASE_URL: 'https://ama-link-nomi.vercel.app',
   SUPABASE_URL: 'https://example.supabase.co',
   SUPABASE_ANON_KEY: 'anon-key',
   SUPABASE_SERVICE_ROLE_KEY: 'service-role-key',
@@ -68,6 +69,33 @@ test('onboarding shell exposes Google login alongside magic links', () => {
   assert.match(html, /Continue with Google/);
   assert.match(html, /signInWithOAuth/);
   assert.match(html, /detectSessionInUrl:\s*false/);
+});
+
+test('public config exposes the canonical app url and preview hosts redirect to it', async () => {
+  const ctx = await startAppServer();
+
+  try {
+    const configResponse = await fetch(`${ctx.origin}/api/public-config`);
+    assert.equal(configResponse.status, 200);
+    const config = await configResponse.json();
+    assert.equal(config.appBaseUrl, fakeEnv.APP_BASE_URL);
+
+    const previewResponse = await fetch(`${ctx.origin}/settings?from=preview`, {
+      headers: {
+        'x-forwarded-host': 'ama-link-nomi-ifbd3ltk5-amas-projects-57827094.vercel.app',
+        'x-forwarded-proto': 'https',
+      },
+      redirect: 'manual',
+    });
+
+    assert.equal(previewResponse.status, 307);
+    assert.equal(
+      previewResponse.headers.get('location'),
+      'https://ama-link-nomi.vercel.app/settings?from=preview'
+    );
+  } finally {
+    await ctx.close();
+  }
 });
 
 test('local OAuth flow completes with stubbed authentication and returns tokens', async () => {
