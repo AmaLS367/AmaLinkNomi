@@ -1,105 +1,132 @@
 # AmaNomiBridge
 
-Remote MCP server gateway for the [Nomi API](https://api.nomi.ai/docs). Connects ChatGPT, Claude, and other MCP-compatible agents to your Nomi characters.
+Multi-tenant MCP gateway for the [Nomi API](https://api.nomi.ai/docs), designed for Vercel, Supabase OAuth, ChatGPT Developer Mode, Claude MCP connector, and generic remote MCP clients.
 
 ```
-AI Agent → AmaNomiBridge → Nomi API
+MCP client -> AmaNomiBridge -> user-bound encrypted Nomi key -> Nomi API
 ```
+
+## What changed
+
+- No more shared `MCP_AUTH_TOKEN`
+- Every user connects their own Nomi API key through a small onboarding UI
+- MCP discovery stays public, but all Nomi-backed `tools/call` requests require bearer auth
+- Nomi credentials are validated before save and stored encrypted at rest
+- Optional service-mode fallback via global `NOMI_API_KEY`
 
 ## Tools
 
-| Tool | Description |
-|------|-------------|
-| `list_nomis` | List all Nomi characters on your account |
-| `get_nomi` | Get details for a specific Nomi by ID |
-| `send_message` | Send a message to a Nomi and receive their reply |
-| `list_rooms` | List all rooms on your account |
-| `send_room_message` | Send a message in a specific room |
+| Tool | Description | Auth |
+|------|-------------|------|
+| `list_nomis` | List all Nomi characters for the authenticated user | required |
+| `get_nomi` | Get details for one Nomi | required |
+| `send_message` | Send a direct message to a Nomi | required |
+| `list_rooms` | List rooms for the authenticated user | required |
+| `send_room_message` | Send a message to a room | required |
 
-## Setup
+Read-only tools expose `readOnlyHint` metadata.
 
-### 1. Clone and install
+## Environment
 
-```bash
-git clone <repo>
-cd ama-nomi-bridge
-npm install
-```
-
-### 2. Configure environment
+Copy the template and fill it:
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env`:
+Required values:
 
 ```env
-NOMI_API_KEY=your-nomi-api-key        # from nomi.ai → Profile → Integration
-MCP_AUTH_TOKEN=your-secret-token      # any strong secret you choose
+NOMI_API_KEY=7f9c3f69-385f-4a22-afe7-d7b50852cd06
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
+SUPABASE_JWT_AUDIENCE=authenticated
 ```
 
-### 3. Build and run locally
+Optional overrides:
 
-```bash
-npm run build
-npm start
+```env
+SUPABASE_JWT_ISSUER=https://your-project.supabase.co/auth/v1
+SUPABASE_JWKS_URL=https://your-project.supabase.co/auth/v1/.well-known/jwks.json
+NOMI_KEY_ENCRYPTION_KEY=any-secret-string
+NOMI_API_BASE_URL=https://api.nomi.ai
 ```
 
-The MCP endpoint will be available at `http://localhost:3000/api/mcp`.
+If `NOMI_KEY_ENCRYPTION_KEY` is omitted, encrypted storage derives its key from `NOMI_API_KEY`. A plain UUID-style Nomi key also works as the seed.
 
-For development with auto-reload:
+## Supabase setup
+
+1. Provision Supabase Auth.
+2. Apply the SQL migration in [supabase/migrations/20260329_create_user_nomi_credentials.sql](supabase/migrations/20260329_create_user_nomi_credentials.sql).
+3. Configure your preferred login method in Supabase Auth. The built-in onboarding UI uses magic-link email login.
+
+## Local development
 
 ```bash
+npm install
 npm run dev
 ```
 
-## Connecting an MCP client
+Useful routes:
 
-Configure your MCP client (Claude Desktop, ChatGPT, etc.) with:
+- `http://localhost:3000/` - onboarding home
+- `http://localhost:3000/settings` - Nomi key settings
+- `http://localhost:3000/status` - connection status
+- `http://localhost:3000/api/mcp` - MCP endpoint
+- `http://localhost:3000/.well-known/oauth-protected-resource/api/mcp` - protected resource metadata
 
-- **URL**: `http://localhost:3000/api/mcp` (local) or `https://<your-deployment>/api/mcp` (Vercel)
-- **Auth header**: `Authorization: Bearer <MCP_AUTH_TOKEN>`
-  - Alternative: `X-API-Key: <MCP_AUTH_TOKEN>`
+## MCP auth model
 
-## Deploy to Vercel
+The server uses a mixed surface:
 
-### Via CLI
+- Public:
+  - `initialize`
+  - `notifications/initialized`
+  - `tools/list`
+  - OAuth discovery metadata
+- Protected:
+  - every `tools/call`
+
+Tool calls require `Authorization: Bearer <Supabase access token>`.
+
+If a client calls a protected MCP method without a token, the server responds with `401` and a `WWW-Authenticate` header pointing to the protected resource metadata URL.
+
+## Onboarding flow
+
+1. Open `/`
+2. Sign in through Supabase magic link
+3. Open `/settings`
+4. Paste your personal Nomi API key
+5. The server validates the key against Nomi before storing it
+6. The key is encrypted and stored in `user_nomi_credentials`
+
+The MCP tools do not accept or store Nomi API keys.
+
+## Vercel deployment
+
+The repo is configured for a single Node function entrypoint at `api/index.ts`.
 
 ```bash
-npm i -g vercel
 vercel
 ```
 
-### Environment variables (Vercel dashboard)
+Before deploying:
 
-Set these in your Vercel project settings → Environment Variables:
+1. Set the environment variables from `.env.example`
+2. Apply the Supabase migration
+3. Enable a Supabase sign-in method
+4. Keep Vercel Function max duration at 60 seconds or higher
 
-```
-NOMI_API_KEY=your-nomi-api-key
-MCP_AUTH_TOKEN=your-secret-mcp-auth-token
-```
+## Notes for clients
 
-The endpoint will be live at `https://<project>.vercel.app/api/mcp`.
-
-## Project structure
-
-```
-src/
-  config/       env validation
-  shared/       logger, errors, http helpers
-  auth/         incoming request authentication
-  nomi/         Nomi API client + types
-  validation/   Zod schemas
-  tools/        MCP tool handlers
-  app/          server factory + Express bootstrap
-  adapters/     Vercel-specific request handler
-api/
-  mcp.ts        Vercel serverless entry point
-```
+- ChatGPT Developer Mode: point it to `https://<your-domain>/api/mcp`
+- Claude MCP connector: same endpoint, same bearer auth model
+- Generic clients: use the same remote MCP endpoint and OAuth discovery metadata
 
 ## Security
 
-- `NOMI_API_KEY` is only used server-side, never exposed to clients
-- All requests to `/api/mcp` require a valid `MCP_AUTH_TOKEN`
-- Secrets are never logged
+- Raw Nomi keys are never logged
+- Raw bearer tokens are never logged
+- Nomi keys are stored encrypted at rest
+- User data access is derived from the bearer token subject, not from MCP tool arguments
