@@ -412,7 +412,13 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
               Secure Login
             </h2>
-            <p style="color: var(--text-secondary); margin-bottom: 2rem;">Sign in with your email to access your personal bridge configuration.</p>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">Sign in with Google or request a magic link to access your personal bridge configuration.</p>
+            <div class="btn-group" style="margin-top: 0; margin-bottom: 1.25rem;">
+              <button id="google-login" type="button" class="btn-primary">
+                Continue with Google
+              </button>
+            </div>
+            <p style="font-size: 0.8125rem; color: var(--text-secondary); margin: 0 0 1.5rem;">If Google login is configured in Supabase, this is the preferred flow.</p>
             <form id="login-form">
               <div class="form-group">
                 <label for="email">Email Address</label>
@@ -542,6 +548,7 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
       const validatedValue = document.getElementById('validated-value');
       const mcpEndpoint = document.getElementById('mcp-endpoint');
       const loginForm = document.getElementById('login-form');
+      const googleLoginButton = document.getElementById('google-login');
       const keyForm = document.getElementById('key-form');
       const deleteKeyButton = document.getElementById('delete-key');
       const refreshStatusButton = document.getElementById('refresh-status');
@@ -565,6 +572,7 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
 
         const config = await configResponse.json();
         client = createClient(config.supabaseUrl, config.supabaseAnonKey);
+        await completeOauthRedirect();
         const currentSession = await client.auth.getSession();
         session = currentSession.data.session;
         renderSession();
@@ -579,6 +587,7 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
         });
 
         loginForm?.addEventListener('submit', onLoginSubmit);
+        googleLoginButton?.addEventListener('click', onGoogleLogin);
         keyForm?.addEventListener('submit', onSaveKey);
         deleteKeyButton?.addEventListener('click', onDeleteKey);
         refreshStatusButton?.addEventListener('click', () => refreshStatus());
@@ -590,6 +599,30 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
         if (session) {
           await refreshStatus();
         }
+      }
+
+      async function completeOauthRedirect() {
+        const url = new URL(window.location.href);
+        const errorDescription = url.searchParams.get('error_description');
+        if (errorDescription) {
+          throw new Error(errorDescription);
+        }
+
+        const code = url.searchParams.get('code');
+        if (!code) {
+          return;
+        }
+
+        const { error } = await client.auth.exchangeCodeForSession(code);
+        if (error) {
+          throw error;
+        }
+
+        url.searchParams.delete('code');
+        url.searchParams.delete('error');
+        url.searchParams.delete('error_code');
+        url.searchParams.delete('error_description');
+        window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
       }
 
       async function onLoginSubmit(event) {
@@ -613,6 +646,27 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
         }
 
         setMessage('✨ Magic link sent! Check your inbox to continue.');
+      }
+
+      async function onGoogleLogin() {
+        const { data, error } = await client.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: window.location.origin + window.location.pathname,
+          },
+        });
+
+        if (error) {
+          setMessage(error.message, true);
+          return;
+        }
+
+        if (!data?.url) {
+          setMessage('Google sign-in could not be started.', true);
+          return;
+        }
+
+        window.location.assign(data.url);
       }
 
       async function onSaveKey(event) {

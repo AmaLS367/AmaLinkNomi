@@ -59,7 +59,8 @@ If `NOMI_KEY_ENCRYPTION_KEY` is omitted, encrypted storage derives its key from 
 
 1. Provision Supabase Auth.
 2. Apply the SQL migration in [supabase/migrations/20260329_create_user_nomi_credentials.sql](supabase/migrations/20260329_create_user_nomi_credentials.sql).
-3. Configure your preferred login method in Supabase Auth. The built-in onboarding UI uses magic-link email login.
+3. Configure your preferred login method in Supabase Auth. The built-in onboarding UI supports Google OAuth and magic-link email login.
+4. In Supabase Auth URL configuration, set your deployed app URL as the Site URL and add every allowed callback origin to Redirect URLs. If this is misconfigured, auth flows often bounce to `http://localhost:3000`.
 
 ## Local development
 
@@ -95,7 +96,7 @@ If a client calls a protected MCP method without a token, the server responds wi
 ## Onboarding flow
 
 1. Open `/`
-2. Sign in through Supabase magic link
+2. Sign in through Google or Supabase magic link
 3. Open `/settings`
 4. Paste your personal Nomi API key
 5. The server validates the key against Nomi before storing it
@@ -116,7 +117,8 @@ Before deploying:
 1. Set the environment variables from `.env.example`
 2. Apply the Supabase migration
 3. Enable a Supabase sign-in method
-4. Keep Vercel Function max duration at 60 seconds or higher
+4. If you want Google login, enable the Google provider in Supabase Auth and configure the Google OAuth client there
+5. Keep Vercel Function max duration at 60 seconds or higher
 
 ## Notes for clients
 
