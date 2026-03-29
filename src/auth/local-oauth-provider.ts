@@ -52,9 +52,11 @@ export interface LocalOAuthProviderOptions {
 }
 
 export class StatelessOAuthClientsStore implements OAuthRegisteredClientsStore {
+  constructor(private readonly env: AppEnv = getEnv()) {}
+
   async getClient(clientId: string): Promise<OAuthClientInformationFull | undefined> {
     try {
-      const payload = verifySignedToken<RegisteredClientPayload>(clientId);
+      const payload = verifySignedToken<RegisteredClientPayload>(clientId, this.env);
       return {
         ...payload,
         client_id: clientId,
@@ -73,7 +75,7 @@ export class StatelessOAuthClientsStore implements OAuthRegisteredClientsStore {
       client_id_issued_at: issuedAt,
     };
 
-    const clientId = signPayload(payload);
+    const clientId = signPayload(payload, this.env);
     return {
       ...payload,
       client_id: clientId,
@@ -82,13 +84,14 @@ export class StatelessOAuthClientsStore implements OAuthRegisteredClientsStore {
 }
 
 export class LocalOAuthProvider implements OAuthServerProvider {
-  readonly clientsStore = new StatelessOAuthClientsStore();
+  readonly clientsStore: StatelessOAuthClientsStore;
   private readonly env: AppEnv;
   private readonly authenticateUser: (authorizationHeader?: string | null) => Promise<AuthenticatedUser>;
 
   constructor(options: LocalOAuthProviderOptions = {}) {
     this.env = options.env ?? getEnv();
     this.authenticateUser = options.authenticateUser ?? authenticateBearerToken;
+    this.clientsStore = new StatelessOAuthClientsStore(this.env);
   }
 
   async authorize(client: OAuthClientInformationFull, params: AuthorizationParams, res: Response): Promise<void> {
