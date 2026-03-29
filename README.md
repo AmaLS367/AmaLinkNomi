@@ -120,6 +120,25 @@ Before deploying:
 4. If you want Google login, enable the Google provider in Supabase Auth and configure the Google OAuth client there
 5. Keep Vercel Function max duration at 60 seconds or higher
 
+## GitHub Actions release flow
+
+The repo includes [production-release.yml](.github/workflows/production-release.yml) for a strict release order:
+
+1. run tests and build
+2. apply Supabase migrations
+3. deploy to Vercel production
+
+Configure these GitHub repository secrets before using it:
+
+- `SUPABASE_ACCESS_TOKEN`
+- `SUPABASE_PROJECT_REF`
+- `SUPABASE_DB_PASSWORD`
+- `VERCEL_TOKEN`
+- `VERCEL_ORG_ID`
+- `VERCEL_PROJECT_ID`
+
+If you use this workflow for production releases, disable automatic Vercel production deploys from the Git integration. Otherwise Vercel may deploy `main` before the migration job finishes, which defeats the ordered release flow.
+
 ## Notes for clients
 
 - ChatGPT Developer Mode: point it to `https://<your-domain>/api/mcp`
