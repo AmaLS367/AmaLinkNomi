@@ -128,6 +128,8 @@ The repo includes [production-release.yml](.github/workflows/production-release.
 2. apply Supabase migrations
 3. deploy to Vercel production
 
+The workflow auto-runs on `dev`. Keep `main` reserved for the standard Vercel Git deployment flow.
+
 Configure these GitHub repository secrets before using it:
 
 - `SUPABASE_ACCESS_TOKEN`
@@ -137,7 +139,7 @@ Configure these GitHub repository secrets before using it:
 - `VERCEL_ORG_ID`
 - `VERCEL_PROJECT_ID`
 
-If you use this workflow for production releases, disable automatic Vercel production deploys from the Git integration. Otherwise Vercel may deploy `main` before the migration job finishes, which defeats the ordered release flow.
+If you later move this workflow back to `main`, disable automatic Vercel production deploys from the Git integration. Otherwise Vercel may deploy `main` before the migration job finishes, which defeats the ordered release flow.
 
 ## Notes for clients
 
