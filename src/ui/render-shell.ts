@@ -440,9 +440,15 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
           <div id="auth-panel">
             <h2>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-              Secure Login
+              ${activeView === 'settings' ? 'Nomi API Key Setup' : activeView === 'status' ? 'Connection Status' : 'Secure Login'}
             </h2>
-            <p style="color: var(--text-secondary); margin-bottom: 2rem;">Sign in with your email to access your personal bridge configuration.</p>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">${
+              activeView === 'settings'
+                ? 'Sign in to configure your Nomi API key. Your key is encrypted with AES-256 before storage.'
+                : activeView === 'status'
+                  ? 'Sign in to view your connection status and MCP endpoint details.'
+                  : 'Sign in with your email to access your personal bridge configuration.'
+            }</p>
             <form id="login-form">
               <div class="form-group">
                 <label for="email">Email Address</label>
