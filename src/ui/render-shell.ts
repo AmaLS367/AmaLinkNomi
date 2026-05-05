@@ -447,26 +447,17 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
                 ? 'Sign in to configure your Nomi API key. Your key is encrypted with AES-256 before storage.'
                 : activeView === 'status'
                   ? 'Sign in to view your connection status and MCP endpoint details.'
-                  : 'Sign in with your email to access your personal bridge configuration.'
+                  : 'Sign in with GitHub or Google to access your personal bridge configuration.'
             }</p>
-            <form id="login-form">
-              <div class="form-group">
-                <label for="email">Email Address</label>
-                <input id="email" type="email" placeholder="name@company.com" required />
-              </div>
-              <div class="btn-group">
-                <button type="submit" class="btn-primary">
-                  Send Magic Link
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                </button>
-                <button id="google-login" type="button" class="btn-secondary">
-                  Continue with Google
-                </button>
-                <button id="github-login" type="button" class="btn-secondary">
-                  Continue with GitHub
-                </button>
-              </div>
-            </form>
+            <div class="btn-group">
+              <button id="github-login" type="button" class="btn-primary">
+                Continue with GitHub
+                <span style="font-size:0.75rem;font-weight:500;opacity:0.85;margin-left:6px;">Recommended</span>
+              </button>
+              <button id="google-login" type="button" class="btn-secondary">
+                Continue with Google
+              </button>
+            </div>
           </div>
 
           <!-- Home / Dashboard View -->
@@ -562,7 +553,7 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
                 <div class="step-number">1</div>
                 <div class="step-content">
                   <h4>Authenticate</h4>
-                  <p>Use your email to receive a secure login link via Supabase.</p>
+                  <p>Sign in with GitHub or Google to access your personal bridge configuration.</p>
                 </div>
               </div>
               <div class="step-item">
@@ -611,7 +602,6 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
       const summaryKeyStatus = document.getElementById('summary-key-status');
       const summaryBridgeStatus = document.getElementById('summary-bridge-status');
 
-      const loginForm = document.getElementById('login-form');
       const googleLoginButton = document.getElementById('google-login');
       const githubLoginButton = document.getElementById('github-login');
       const keyForm = document.getElementById('key-form');
@@ -663,7 +653,6 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
           }
         });
 
-        loginForm?.addEventListener('submit', onLoginSubmit);
         googleLoginButton?.addEventListener('click', onGoogleLogin);
         githubLoginButton?.addEventListener('click', onGitHubLogin);
         keyForm?.addEventListener('submit', onSaveKey);
@@ -677,29 +666,6 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
         if (session) {
           await refreshStatus();
         }
-      }
-
-      async function onLoginSubmit(event) {
-        event.preventDefault();
-        const email = document.getElementById('email').value.trim();
-        if (!email) {
-          setMessage('Enter an email address first.', true);
-          return;
-        }
-
-        const { error } = await client.auth.signInWithOtp({
-          email,
-          options: {
-            emailRedirectTo: buildAppUrl(appBaseUrl, window.location.pathname).href,
-          },
-        });
-
-        if (error) {
-          setMessage(error.message, true);
-          return;
-        }
-
-        setMessage('✨ Magic link sent! Check your inbox to continue.');
       }
 
       async function onGoogleLogin() {
@@ -745,7 +711,7 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
         }
 
         if (authError) {
-          setMessage('Magic link expired (likely scanned by your email client). Please request a new one or use Google.', true);
+          setMessage('Sign-in failed. Please try GitHub or Google login.', true);
           return;
         }
 

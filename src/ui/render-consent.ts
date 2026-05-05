@@ -189,15 +189,13 @@ export function renderConsentPage(input: {
         </div>
 
         <div id="consent-app" class="${authorizationId ? '' : 'hidden'}">
-          <div class="stack" id="login-panel">
-            <div class="field">
-              <label for="email">Email for magic link</label>
-              <input id="email" type="email" placeholder="you@example.com" />
-            </div>
+          <div id="login-panel">
             <div class="actions">
-              <button id="magic-link" class="secondary" type="button">Send Magic Link</button>
+              <button id="github-login" class="primary" type="button">
+                Continue with GitHub
+                <span style="font-size:0.72rem;font-weight:600;opacity:0.85;margin-left:6px;">Recommended</span>
+              </button>
               <button id="google-login" class="secondary" type="button">Continue with Google</button>
-              <button id="github-login" class="secondary" type="button">Continue with GitHub</button>
             </div>
           </div>
 
