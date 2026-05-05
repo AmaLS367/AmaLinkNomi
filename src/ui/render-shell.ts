@@ -1,4 +1,13 @@
-export function renderShell(activeView: 'home' | 'settings' | 'status'): string {
+type ActiveView = 'home' | 'settings' | 'guides' | 'status';
+export type GuideSlug = 'index' | 'chatgpt' | 'claude' | 'nomi-key' | 'system';
+
+const GUIDE_SLUGS = new Set<string>(['index', 'chatgpt', 'claude', 'nomi-key', 'system']);
+
+export function isGuideSlug(value: string): value is Exclude<GuideSlug, 'index'> {
+  return GUIDE_SLUGS.has(value) && value !== 'index';
+}
+
+export function renderShell(activeView: ActiveView, activeGuide: GuideSlug = 'index'): string {
   return `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -157,6 +166,74 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
         gap: 1rem;
       }
       .endpoint-row code { overflow-wrap: anywhere; }
+      .guide-index-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+      .guide-grid { display: grid; gap: 1.25rem; max-width: 920px; }
+      .guide-card {
+        display: block;
+        color: inherit;
+        text-decoration: none;
+        background: rgba(255, 255, 255, 0.035);
+        border: 1px solid var(--glass-border);
+        border-radius: 14px;
+        padding: 1.5rem;
+        transition: 0.2s ease;
+      }
+      .guide-card:hover { transform: translateY(-2px); border-color: rgba(20, 184, 166, 0.28); background: rgba(255, 255, 255, 0.055); }
+      .guide-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 0.35rem; }
+      .guide-copy { color: var(--text-secondary); font-size: 0.92rem; margin-bottom: 1.25rem; }
+      .guide-action { color: var(--accent-secondary); font-weight: 800; font-size: 0.88rem; }
+      .guide-panel { animation: viewIn 0.32s cubic-bezier(0.16, 1, 0.3, 1); }
+      .guide-note {
+        margin: 1.25rem 0;
+        padding: 1rem;
+        background: rgba(245, 158, 11, 0.08);
+        border: 1px solid rgba(245, 158, 11, 0.2);
+        border-radius: 12px;
+        color: var(--text-secondary);
+        font-size: 0.88rem;
+      }
+      .guide-note strong { color: var(--warning); }
+      .back-link {
+        display: inline-flex;
+        align-items: center;
+        color: var(--accent-secondary);
+        text-decoration: none;
+        font-weight: 800;
+        font-size: 0.88rem;
+        margin-bottom: 1rem;
+      }
+      .step-list { display: grid; gap: 0.75rem; }
+      .step-row { display: grid; grid-template-columns: 2rem 1fr; gap: 0.85rem; align-items: start; }
+      .step-index {
+        width: 2rem; height: 2rem; border-radius: 999px;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(20, 184, 166, 0.12);
+        color: var(--accent-secondary);
+        border: 1px solid rgba(20, 184, 166, 0.22);
+        font-weight: 800; font-size: 0.8rem;
+      }
+      .step-row strong { display: block; font-size: 0.95rem; margin-bottom: 0.15rem; }
+      .step-row span { color: var(--text-secondary); font-size: 0.88rem; }
+      .detail-list { display: grid; gap: 0.35rem; margin-top: 0.55rem; color: var(--text-secondary); font-size: 0.86rem; }
+      .detail-list div::before { content: "- "; color: var(--accent-secondary); font-weight: 800; }
+      .system-flow {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.75rem;
+        margin-top: 1rem;
+      }
+      .flow-item {
+        min-height: 96px;
+        padding: 1rem;
+        background: rgba(0, 0, 0, 0.28);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 12px;
+      }
+      .flow-item strong { display: block; font-size: 0.88rem; margin-bottom: 0.35rem; }
+      .flow-item span { color: var(--text-secondary); font-size: 0.8rem; }
+      .source-list { display: grid; gap: 0.5rem; margin-top: 1rem; }
+      .source-list a { color: var(--accent-secondary); font-size: 0.88rem; font-weight: 700; text-decoration: none; overflow-wrap: anywhere; }
+      .source-list a:hover { text-decoration: underline; }
 
       .badge { padding: 0.35rem 0.75rem; border-radius: 99px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; }
       .badge-success { background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.2); }
@@ -210,13 +287,14 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
         .app-shell { min-height: 100vh; height: auto; flex-direction: column; }
         aside.sidebar { width: 100%; position: sticky; top: 0; padding: 1rem; }
         .logo-area { margin-bottom: 1rem; }
-        nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+        nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
         nav a { justify-content: center; gap: 0.45rem; padding: 0.72rem 0.45rem; font-size: 0.78rem; white-space: nowrap; }
         nav a svg { width: 18px; height: 18px; }
         .user-panel { display: none; }
         main.content { padding: 1.5rem; }
         .view-header h1 { font-size: 2rem; }
         .grid { grid-template-columns: 1fr; }
+        .system-flow { grid-template-columns: 1fr; }
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -224,7 +302,7 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
       }
     </style>
   </head>
-  <body data-view="${activeView}">
+  <body data-view="${activeView}" data-guide="${activeGuide}">
     <!-- Panel for non-authenticated users (hidden by default to avoid flash) -->
     <div id="auth-panel" class="auth-overlay hidden">
       <div class="auth-card">
@@ -257,6 +335,10 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
           <a href="/settings" data-view-link="settings" data-active="${activeView === 'settings'}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3v-3.5"/></svg>
             API Setup
+          </a>
+          <a href="/guides" data-view-link="guides" data-active="${activeView === 'guides'}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/><path d="M8 7h8"/><path d="M8 11h6"/></svg>
+            Guides
           </a>
           <a href="/status" data-view-link="status" data-active="${activeView === 'status'}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
@@ -324,6 +406,175 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
           </div>
         </div>
 
+        <!-- Guides -->
+        <div id="guides-view" class="view hidden">
+          <div id="guides-index" class="guide-panel ${activeGuide === 'index' ? '' : 'hidden'}">
+            <div class="view-header">
+              <h1>Guides</h1>
+              <p>Step-by-step setup notes for connecting AmaLink Nomi to your AI clients.</p>
+            </div>
+            <div class="guide-index-grid">
+              <a class="guide-card" href="/guides/chatgpt" data-guide-link="chatgpt">
+                <div class="card-label">CHATGPT CONNECTOR</div>
+                <div class="guide-title">Connect AmaLink Nomi in ChatGPT</div>
+                <p class="guide-copy">Use the MCP endpoint from Gateway Health as the custom connector URL.</p>
+                <span class="guide-action">Open guide</span>
+              </a>
+              <a class="guide-card" href="/guides/claude" data-guide-link="claude">
+                <div class="card-label">CLAUDE CONNECTOR</div>
+                <div class="guide-title">Connect AmaLink Nomi in Claude</div>
+                <p class="guide-copy">Add the same remote MCP endpoint in Claude and complete OAuth approval.</p>
+                <span class="guide-action">Open guide</span>
+              </a>
+              <a class="guide-card" href="/guides/nomi-key" data-guide-link="nomi-key">
+                <div class="card-label">NOMI API KEY</div>
+                <div class="guide-title">Get and save your Nomi integration key</div>
+                <p class="guide-copy">Generate your token in Nomi and store it encrypted in AmaLink.</p>
+                <span class="guide-action">Open guide</span>
+              </a>
+              <a class="guide-card" href="/guides/system" data-guide-link="system">
+                <div class="card-label">SYSTEM FLOW</div>
+                <div class="guide-title">How AmaLink Nomi works</div>
+                <p class="guide-copy">Understand the OAuth gate, encrypted key store, and MCP request path.</p>
+                <span class="guide-action">Open guide</span>
+              </a>
+            </div>
+          </div>
+
+          <article id="guide-chatgpt" class="guide-panel ${activeGuide === 'chatgpt' ? '' : 'hidden'}">
+            <a href="/guides" data-guide-link="index" class="back-link">Back to guides</a>
+            <div class="view-header">
+              <h1>Connect ChatGPT</h1>
+              <p>Set up AmaLink Nomi as a custom MCP app or connector in ChatGPT.</p>
+            </div>
+            <div class="guide-grid">
+              <div class="guide-card">
+                <div class="card-label">CHATGPT CONNECTOR</div>
+                <div class="guide-title">Connect AmaLink Nomi in ChatGPT</div>
+                <p class="guide-copy">Use the MCP endpoint from Gateway Health as the custom app or custom connector URL. OpenAI is moving the UI language toward Apps and Apps &amp; Connectors, so older accounts may still show Connectors.</p>
+                <div class="guide-note"><strong>Before you start:</strong> custom MCP apps/connectors depend on plan and workspace permissions. If the custom option is missing, check Developer mode, Apps &amp; Connectors settings, and workspace admin permissions.</div>
+                <div class="step-list">
+                  <div class="step-row"><div class="step-index">1</div><div><strong>Copy the AmaLink MCP endpoint</strong><span>Open Gateway Health and copy the endpoint URL shown there.</span><div class="detail-list"><div>Use the Copy button to avoid missing the <code>/api/mcp</code> path.</div><div>Keep this page open until the ChatGPT setup is finished.</div></div></div></div>
+                  <div class="step-row"><div class="step-index">2</div><div><strong>Open ChatGPT Apps settings</strong><span>In ChatGPT, go to Settings and find Apps, Apps &amp; Connectors, or Connectors. If your workspace uses the beta developer flow, enable Developer mode before creating a custom MCP app.</span><div class="detail-list"><div>OpenAI's current UI is in transition from Connectors to Apps, so names can differ by account.</div><div>Business, Enterprise, and Edu workspaces can require owner/admin permission, developer-mode access, or publishing before other members can use the app.</div></div></div></div>
+                  <div class="step-row"><div class="step-index">3</div><div><strong>Add the custom MCP app or connector</strong><span>Choose the custom MCP option, paste the AmaLink endpoint, and save the connector. If ChatGPT asks for a name, use <code>AmaLink Nomi</code>.</span><div class="detail-list"><div>If ChatGPT says the server does not implement the expected specification, verify that you pasted the exact <code>/api/mcp</code> endpoint.</div><div>If ChatGPT shows admin approval required, the fix is in workspace/admin settings, not in AmaLink.</div></div></div></div>
+                  <div class="step-row"><div class="step-index">4</div><div><strong>Connect your user account</strong><span>Open the new connector and click Connect. ChatGPT should redirect to AmaLink Nomi OAuth consent.</span><div class="detail-list"><div>Sign in with the same GitHub or Google account you used in AmaLink.</div><div>Review the consent screen, then approve. The OAuth token lets ChatGPT call AmaLink, not see your Nomi API key.</div></div></div></div>
+                  <div class="step-row"><div class="step-index">5</div><div><strong>Enable it in a chat</strong><span>Start a new ChatGPT conversation and enable AmaLink Nomi from the app, connector, tools, or source picker UI.</span><div class="detail-list"><div>Ask a simple test prompt first, for example: list available Nomi rooms or list my Nomis.</div><div>If no tools appear, reconnect the app and refresh the connector tools in settings if your workspace UI offers that button.</div></div></div></div>
+                </div>
+              </div>
+              <div class="guide-card">
+                <div class="card-label">REFERENCE LINKS</div>
+                <div class="source-list">
+                  <a href="https://help.openai.com/en/articles/11487775-connectors-in-chatgpt" target="_blank">OpenAI Help: Apps / Connectors in ChatGPT</a>
+                  <a href="https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt-beta" target="_blank">OpenAI Help: Developer mode and MCP apps in ChatGPT</a>
+                  <a href="https://platform.openai.com/docs/mcp/" target="_blank">OpenAI Platform: Building MCP servers for ChatGPT and API integrations</a>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article id="guide-claude" class="guide-panel ${activeGuide === 'claude' ? '' : 'hidden'}">
+            <a href="/guides" data-guide-link="index" class="back-link">Back to guides</a>
+            <div class="view-header">
+              <h1>Connect Claude</h1>
+              <p>Add AmaLink Nomi as a Claude custom connector using remote MCP.</p>
+            </div>
+            <div class="guide-grid">
+              <div class="guide-card">
+                <div class="card-label">CLAUDE CONNECTOR</div>
+                <div class="guide-title">Connect AmaLink Nomi in Claude</div>
+                <p class="guide-copy">Claude custom connectors call your remote MCP server from Anthropic cloud infrastructure. The AmaLink endpoint must be publicly reachable over HTTPS.</p>
+                <div class="guide-note"><strong>Before you start:</strong> Claude remote MCP is beta. Free, Pro, Max, Team, and Enterprise users can use custom connectors, but Free users are limited to one custom connector. Team and Enterprise setup can require an Owner or Primary Owner.</div>
+                <div class="step-list">
+                  <div class="step-row"><div class="step-index">1</div><div><strong>Copy the AmaLink MCP endpoint</strong><span>Open Gateway Health and copy the endpoint URL shown there.</span><div class="detail-list"><div>Use the Copy button to avoid missing the <code>/api/mcp</code> path.</div><div>Keep this page open until the Claude setup is finished.</div></div></div></div>
+                  <div class="step-row"><div class="step-index">2</div><div><strong>Open Claude connector settings</strong><span>For individual plans, go to Customize &gt; Connectors. For Team and Enterprise, an Owner may need Organization settings &gt; Connectors first.</span><div class="detail-list"><div>Individual Pro and Max users can add a custom connector directly.</div><div>For Team and Enterprise, the Owner adds the connector at org level, then users connect it individually.</div></div></div></div>
+                  <div class="step-row"><div class="step-index">3</div><div><strong>Add a custom Web connector</strong><span>Choose Add custom connector or Custom &gt; Web, paste the AmaLink endpoint, and name it <code>AmaLink Nomi</code>.</span><div class="detail-list"><div>Leave advanced OAuth Client ID and Client Secret blank unless your deployment specifically requires static client credentials.</div><div>AmaLink supports the OAuth flow used by Claude through its consent route.</div></div></div></div>
+                  <div class="step-row"><div class="step-index">4</div><div><strong>Connect and approve OAuth</strong><span>Click Connect, sign in to AmaLink, and approve the authorization request.</span><div class="detail-list"><div>Claude receives an OAuth token for AmaLink, not your Nomi API key.</div><div>If authorization fails, retry from Claude settings after confirming AmaLink is reachable at <code>/health</code>.</div></div></div></div>
+                  <div class="step-row"><div class="step-index">5</div><div><strong>Enable it in the conversation</strong><span>In a Claude chat, use the lower-left plus button and Connectors menu, then toggle AmaLink Nomi on for that conversation.</span><div class="detail-list"><div>Start with a read-only test like listing Nomis or rooms.</div><div>Disable tools that are not relevant to the current conversation if Claude exposes tool-level controls.</div></div></div></div>
+                </div>
+              </div>
+              <div class="guide-card">
+                <div class="card-label">REFERENCE LINKS</div>
+                <div class="source-list">
+                  <a href="https://support.anthropic.com/en/articles/11175166-getting-started-with-custom-integrations-using-remote-mcp" target="_blank">Anthropic Help: Get started with custom connectors using remote MCP</a>
+                  <a href="https://support.anthropic.com/en/articles/11503834-building-custom-integrations-via-remote-mcp-servers" target="_blank">Anthropic Help: Building custom connectors via remote MCP servers</a>
+                  <a href="https://docs.anthropic.com/en/docs/agents-and-tools/mcp-connector" target="_blank">Anthropic Docs: MCP connector</a>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article id="guide-nomi-key" class="guide-panel ${activeGuide === 'nomi-key' ? '' : 'hidden'}">
+            <a href="/guides" data-guide-link="index" class="back-link">Back to guides</a>
+            <div class="view-header">
+              <h1>Nomi API Key</h1>
+              <p>Generate your Nomi integration token and save it in AmaLink Nomi.</p>
+            </div>
+            <div class="guide-grid">
+              <div class="guide-card">
+                <div class="card-label">NOMI API KEY</div>
+                <div class="guide-title">Get and save your Nomi integration key</div>
+                <p class="guide-copy">AmaLink validates your Nomi integration key before storing it, then uses it server-side for future tool calls.</p>
+                <div class="guide-note"><strong>Security note:</strong> treat the Nomi API key like a password. Do not send it to ChatGPT or Claude directly. Paste it only into the AmaLink API Setup page you control.</div>
+                <div class="step-list">
+                  <div class="step-row"><div class="step-index">1</div><div><strong>Open the Nomi integrations area</strong><span>Go to <a href="https://beta.nomi.ai/profile/integrations" target="_blank" style="color: var(--accent-secondary); font-weight: 700;">beta.nomi.ai/profile/integrations</a>, or open Nomi, then Profile, then the Integrations section.</span><div class="detail-list"><div>If Nomi redirects you to sign in, sign in first and return to the integrations page.</div><div>The exact visual placement can change, but Nomi's docs point users to the Integration section of the Profile tab.</div></div></div></div>
+                  <div class="step-row"><div class="step-index">2</div><div><strong>Copy the API key</strong><span>Copy the integration/API key shown by Nomi. It is usually formatted like a UUID.</span><div class="detail-list"><div>Do not copy your Nomi account password.</div><div>Copy only the key value shown in the integration page.</div></div></div></div>
+                  <div class="step-row"><div class="step-index">3</div><div><strong>Save it in AmaLink API Setup</strong><span>Open AmaLink Nomi, go to API Setup, paste the key, and click Save Key.</span><div class="detail-list"><div>AmaLink calls Nomi to verify the key before saving.</div><div>If validation succeeds, the dashboard credentials state should become connected or verified.</div></div></div></div>
+                  <div class="step-row"><div class="step-index">4</div><div><strong>Confirm Gateway Health</strong><span>Open Gateway Health and check the last four digits and last validated fields.</span><div class="detail-list"><div>The last four digits help confirm which key is stored without exposing the full key.</div><div>If validation shows Never or Missing, save the key again and check that your Nomi account API access is active.</div></div></div></div>
+                  <div class="step-row"><div class="step-index">5</div><div><strong>Rotate or delete when needed</strong><span>If you think the key leaked, rotate/regenerate it in Nomi if available, then update AmaLink. Use Delete Key in AmaLink to remove the stored key.</span><div class="detail-list"><div>After deleting, ChatGPT or Claude can still authenticate to AmaLink, but Nomi tool calls will fail until a valid Nomi key is saved again.</div><div>Repeated invalid or excessive Nomi API calls can trigger API errors or rate limits.</div></div></div></div>
+                </div>
+              </div>
+              <div class="guide-card">
+                <div class="card-label">REFERENCE LINKS</div>
+                <div class="source-list">
+                  <a href="https://api.nomi.ai/docs/" target="_blank">Nomi.ai API Docs: Getting Started and Authorization</a>
+                  <a href="https://api.nomi.ai/docs/reference/general/" target="_blank">Nomi.ai API Docs: Versioning, rate limits, and response codes</a>
+                  <a href="https://nomi.ai/nomi-knowledge/take-your-nomi-anywhere-with-nomis-ai-companion-api/" target="_blank">Nomi.ai: API key in Integrations tab under Profile</a>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article id="guide-system" class="guide-panel ${activeGuide === 'system' ? '' : 'hidden'}">
+            <a href="/guides" data-guide-link="index" class="back-link">Back to guides</a>
+            <div class="view-header">
+              <h1>System Flow</h1>
+              <p>How the OAuth-protected MCP gateway protects your Nomi API key.</p>
+            </div>
+            <div class="guide-grid">
+              <div class="guide-card">
+                <div class="card-label">SYSTEM FLOW</div>
+                <div class="guide-title">How AmaLink Nomi works</div>
+                <p class="guide-copy">AmaLink Nomi is a remote MCP server. ChatGPT or Claude authenticates to AmaLink with OAuth, then AmaLink uses your encrypted Nomi API key server-side when a tool needs Nomi data.</p>
+                <div class="system-flow">
+                  <div class="flow-item"><strong>AI Client</strong><span>ChatGPT or Claude calls the public <code>/api/mcp</code> endpoint.</span></div>
+                  <div class="flow-item"><strong>OAuth Gate</strong><span>AmaLink verifies the connector token and maps it to your account.</span></div>
+                  <div class="flow-item"><strong>Secure Key Store</strong><span>The Nomi key is decrypted only on the server for the current request.</span></div>
+                  <div class="flow-item"><strong>Nomi API</strong><span>AmaLink calls Nomi and returns only tool results to the AI client.</span></div>
+                </div>
+              </div>
+              <div class="guide-card">
+                <div class="card-label">DETAILED REQUEST PATH</div>
+                <div class="step-list">
+                  <div class="step-row"><div class="step-index">1</div><div><strong>You configure a public MCP endpoint</strong><span>Gateway Health shows the URL that external AI clients should use. It ends with <code>/api/mcp</code>.</span><div class="detail-list"><div>Remote MCP clients need a public HTTPS URL.</div><div>Local-only addresses work only for local MCP clients, not hosted ChatGPT or Claude connectors.</div></div></div></div>
+                  <div class="step-row"><div class="step-index">2</div><div><strong>The client performs OAuth</strong><span>ChatGPT or Claude redirects you to AmaLink consent, then receives a token after you approve.</span><div class="detail-list"><div>The OAuth token represents permission to call AmaLink.</div><div>It is separate from the Nomi API key and can be disconnected from the AI client side.</div></div></div></div>
+                  <div class="step-row"><div class="step-index">3</div><div><strong>A tool call arrives at AmaLink</strong><span>The client sends an MCP tool request to <code>/api/mcp</code> with the OAuth bearer token.</span><div class="detail-list"><div>AmaLink authenticates the token before running account-specific operations.</div><div>If the token is missing or invalid, the request should fail before Nomi is called.</div></div></div></div>
+                  <div class="step-row"><div class="step-index">4</div><div><strong>AmaLink loads the stored Nomi credential</strong><span>If the request needs Nomi, AmaLink retrieves your encrypted credential, decrypts it server-side, and uses it for the Nomi API request.</span><div class="detail-list"><div>The browser and AI client do not receive the full Nomi key.</div><div>The UI only shows masked status such as the last four digits.</div></div></div></div>
+                  <div class="step-row"><div class="step-index">5</div><div><strong>Nomi returns the result</strong><span>AmaLink forwards the relevant result back through MCP, such as lists of Nomis, room data, or message responses exposed by the server tools.</span><div class="detail-list"><div>Nomi API responses are JSON.</div><div>Errors from Nomi should be surfaced as tool errors, not as leaked credentials.</div></div></div></div>
+                </div>
+              </div>
+              <div class="guide-card">
+                <div class="card-label">TROUBLESHOOTING</div>
+                <div class="step-list">
+                  <div class="step-row"><div class="step-index">1</div><div><strong>Connector cannot reach server</strong><span>Confirm the deployment is public and <code>/health</code> returns OK from the internet.</span></div></div>
+                  <div class="step-row"><div class="step-index">2</div><div><strong>OAuth approval loops or fails</strong><span>Reconnect from the AI client settings and make sure the canonical app URL matches the deployed AmaLink URL.</span></div></div>
+                  <div class="step-row"><div class="step-index">3</div><div><strong>Nomi calls fail after connector works</strong><span>Open API Setup, save the Nomi key again, then check Gateway Health for last validated status.</span></div></div>
+                  <div class="step-row"><div class="step-index">4</div><div><strong>Tools are missing in ChatGPT or Claude</strong><span>Refresh or reconnect the connector. Some workspaces require admin action approval before tools become available.</span></div></div>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+
         <!-- Status -->
         <div id="status-view" class="view hidden">
           <div class="view-header">
@@ -356,15 +607,32 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
       const appContainer = document.getElementById('app-container');
       const homeView = document.getElementById('home-view');
       const settingsView = document.getElementById('settings-view');
+      const guidesView = document.getElementById('guides-view');
       const statusView = document.getElementById('status-view');
       const toast = document.getElementById('toast');
-      const viewRoutes = { home: '/', settings: '/settings', status: '/status' };
+      const viewRoutes = { home: '/', settings: '/settings', guides: '/guides', status: '/status' };
+      const guideRoutes = {
+        index: '/guides',
+        chatgpt: '/guides/chatgpt',
+        claude: '/guides/claude',
+        'nomi-key': '/guides/nomi-key',
+        system: '/guides/system',
+      };
       const viewTitles = {
         home: 'AmaLink Nomi - Dashboard',
         settings: 'AmaLink Nomi - API Setup',
+        guides: 'AmaLink Nomi - Guides',
         status: 'AmaLink Nomi - Gateway Health',
       };
+      const guideTitles = {
+        index: 'AmaLink Nomi - Guides',
+        chatgpt: 'AmaLink Nomi - ChatGPT Guide',
+        claude: 'AmaLink Nomi - Claude Guide',
+        'nomi-key': 'AmaLink Nomi - Nomi API Key Guide',
+        system: 'AmaLink Nomi - System Flow Guide',
+      };
       let activeView = document.body.dataset.view || 'home';
+      let activeGuide = document.body.dataset.guide || 'index';
 
       let client, session;
 
@@ -398,7 +666,14 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
             setActiveView(link.dataset.viewLink, true);
           });
         });
-        window.addEventListener('popstate', () => setActiveView(viewFromPath(window.location.pathname), false));
+        document.querySelectorAll('a[data-guide-link]').forEach((link) => {
+          link.addEventListener('click', (event) => {
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            event.preventDefault();
+            setActiveGuide(link.dataset.guideLink, true);
+          });
+        });
+        window.addEventListener('popstate', () => setRouteFromPath(window.location.pathname, false));
 
         document.getElementById('key-form').onsubmit = async (e) => {
           e.preventDefault();
@@ -445,28 +720,71 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
       function setActiveView(nextView, push) {
         if (!viewRoutes[nextView]) return;
         activeView = nextView;
+        if (nextView === 'guides') activeGuide = 'index';
         document.body.dataset.view = nextView;
+        document.body.dataset.guide = activeGuide;
         renderViews();
-        document.title = viewTitles[nextView];
-        if (push && window.location.pathname !== viewRoutes[nextView]) {
-          window.history.pushState({ view: nextView }, '', viewRoutes[nextView]);
+        document.title = nextView === 'guides' ? guideTitles.index : viewTitles[nextView];
+        const route = nextView === 'guides' ? guideRoutes.index : viewRoutes[nextView];
+        if (push && window.location.pathname !== route) {
+          window.history.pushState({ view: nextView, guide: activeGuide }, '', route);
         }
         if (nextView === 'status') refresh();
+      }
+
+      function setActiveGuide(nextGuide, push) {
+        if (!guideRoutes[nextGuide]) return;
+        activeView = 'guides';
+        activeGuide = nextGuide;
+        document.body.dataset.view = activeView;
+        document.body.dataset.guide = activeGuide;
+        renderViews();
+        document.title = guideTitles[activeGuide];
+        if (push && window.location.pathname !== guideRoutes[activeGuide]) {
+          window.history.pushState({ view: activeView, guide: activeGuide }, '', guideRoutes[activeGuide]);
+        }
       }
 
       function renderViews() {
         homeView.classList.toggle('hidden', activeView !== 'home');
         settingsView.classList.toggle('hidden', activeView !== 'settings');
+        guidesView.classList.toggle('hidden', activeView !== 'guides');
         statusView.classList.toggle('hidden', activeView !== 'status');
+        document.querySelectorAll('.guide-panel').forEach((panel) => {
+          panel.classList.toggle('hidden', panel.id !== guidePanelId(activeGuide));
+        });
         document.querySelectorAll('nav a[data-view-link]').forEach((link) => {
           link.dataset.active = String(link.dataset.viewLink === activeView);
         });
+        document.querySelectorAll('a[data-guide-link]').forEach((link) => {
+          link.dataset.active = String(link.dataset.guideLink === activeGuide);
+        });
+      }
+
+      function setRouteFromPath(pathname) {
+        activeView = viewFromPath(pathname);
+        activeGuide = guideFromPath(pathname);
+        document.body.dataset.view = activeView;
+        document.body.dataset.guide = activeGuide;
+        renderViews();
+        document.title = activeView === 'guides' ? guideTitles[activeGuide] : viewTitles[activeView];
       }
 
       function viewFromPath(pathname) {
         if (pathname === '/settings') return 'settings';
+        if (pathname === '/guides' || pathname.startsWith('/guides/')) return 'guides';
         if (pathname === '/status') return 'status';
         return 'home';
+      }
+
+      function guideFromPath(pathname) {
+        if (!pathname.startsWith('/guides/')) return 'index';
+        const slug = pathname.split('/')[2] || 'index';
+        return guideRoutes[slug] ? slug : 'index';
+      }
+
+      function guidePanelId(guide) {
+        return guide === 'index' ? 'guides-index' : 'guide-' + guide;
       }
 
       async function refresh() {

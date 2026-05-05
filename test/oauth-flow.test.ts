@@ -71,6 +71,23 @@ test('onboarding shell exposes Google login alongside magic links', () => {
   assert.match(html, /detectSessionInUrl:\s*false/);
 });
 
+test('guides shell exposes connector setup steps', () => {
+  const html = renderShell('guides');
+  assert.match(html, /data-view-link="guides"/);
+  assert.match(html, /href="\/guides\/chatgpt"/);
+  assert.match(html, /href="\/guides\/claude"/);
+  assert.match(html, /href="\/guides\/nomi-key"/);
+  assert.match(html, /href="\/guides\/system"/);
+});
+
+test('guide detail shell renders a single active guide panel', () => {
+  const html = renderShell('guides', 'chatgpt');
+  assert.match(html, /data-guide="chatgpt"/);
+  assert.match(html, /id="guide-chatgpt" class="guide-panel "/);
+  assert.match(html, /id="guides-index" class="guide-panel hidden"/);
+  assert.match(html, /Connect AmaLink Nomi in ChatGPT/);
+});
+
 test('public config exposes the canonical app url and preview hosts redirect to it', async () => {
   const ctx = await startAppServer();
 
@@ -93,6 +110,14 @@ test('public config exposes the canonical app url and preview hosts redirect to 
       previewResponse.headers.get('location'),
       'https://ama-link-nomi.vercel.app/settings?from=preview'
     );
+
+    const guidesResponse = await fetch(`${ctx.origin}/guides`);
+    assert.equal(guidesResponse.status, 200);
+    assert.match(await guidesResponse.text(), /id="guides-view"/);
+
+    const guideDetailResponse = await fetch(`${ctx.origin}/guides/chatgpt`);
+    assert.equal(guideDetailResponse.status, 200);
+    assert.match(await guideDetailResponse.text(), /data-guide="chatgpt"/);
   } finally {
     await ctx.close();
   }

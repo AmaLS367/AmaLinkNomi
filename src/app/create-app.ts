@@ -19,7 +19,7 @@ import { UserNomiCredentialsStore } from '../storage/user-nomi-credentials-store
 import { NomiApiClient } from '../nomi/nomi-client';
 import { ValidationError } from '../shared/errors';
 import { renderConsentPage } from '../ui/render-consent';
-import { renderShell } from '../ui/render-shell';
+import { isGuideSlug, renderShell } from '../ui/render-shell';
 import { handleMcpRequest } from '../adapters/vercel/handler';
 
 type PublicEnv = Pick<AppEnv, 'SUPABASE_URL' | 'SUPABASE_ANON_KEY' | 'APP_BASE_URL'>;
@@ -81,6 +81,20 @@ export function createApp(options: CreateAppOptions = {}) {
 
   app.get('/settings', (_req, res) => {
     res.status(200).type('html').send(renderShell('settings'));
+  });
+
+  app.get('/guides', (_req, res) => {
+    res.status(200).type('html').send(renderShell('guides'));
+  });
+
+  app.get('/guides/:guide', (req, res) => {
+    const guide = req.params.guide;
+    if (!isGuideSlug(guide)) {
+      res.status(404).type('html').send(renderShell('guides'));
+      return;
+    }
+
+    res.status(200).type('html').send(renderShell('guides', guide));
   });
 
   app.get('/status', (_req, res) => {
@@ -252,7 +266,7 @@ export function createApp(options: CreateAppOptions = {}) {
 }
 
 function shouldRedirectToCanonicalHost(path: string): boolean {
-  return path === '/' || path === '/settings' || path === '/status' || path === '/oauth/consent';
+  return path === '/' || path === '/settings' || path.startsWith('/guides') || path === '/status' || path === '/oauth/consent';
 }
 
 function isLocalOrigin(origin: string): boolean {
