@@ -27,213 +27,171 @@ export function renderConsentPage(input: {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AmaNomiBridge OAuth Consent</title>
+    <title>Authorize Connection - AmaLink Nomi / AmaNomiBridge</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%237c3aed'/%3E%3Cpath d='M12 4l6 3v5c0 4-3 7-6 8-3-1-6-4-6-8V7l6-3z' fill='white'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
       :root {
         color-scheme: dark;
-        --bg: #07111f;
-        --panel: rgba(9, 18, 34, 0.82);
-        --border: rgba(148, 163, 184, 0.2);
-        --text: #f8fafc;
-        --muted: #94a3b8;
+        --bg: #07080b;
+        --surface: rgba(18, 21, 29, 0.9);
         --accent: #22c55e;
-        --accent-2: #38bdf8;
+        --accent-glow: rgba(34, 197, 94, 0.2);
+        --accent-2: #7c3aed;
+        --accent-3: #14b8a6;
+        --text-primary: #ffffff;
+        --text-secondary: #a7adbb;
+        --glass: rgba(255, 255, 255, 0.045);
+        --glass-border: rgba(255, 255, 255, 0.105);
         --danger: #fb7185;
+        --font-main: 'Outfit', system-ui, sans-serif;
+        --font-mono: 'JetBrains Mono', monospace;
       }
 
-      * { box-sizing: border-box; }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
 
       body {
-        margin: 0;
-        min-height: 100vh;
-        display: grid;
-        place-items: center;
-        padding: 24px;
+        font-family: var(--font-main);
         background:
-          radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 34%),
-          radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.18), transparent 32%),
-          linear-gradient(180deg, #020617 0%, #07111f 100%);
-        color: var(--text);
-        font-family: Inter, system-ui, sans-serif;
-      }
-
-      .shell {
-        width: min(960px, 100%);
-        display: grid;
-        gap: 24px;
-        grid-template-columns: 1.2fr 0.8fr;
-      }
-
-      @media (max-width: 900px) {
-        .shell {
-          grid-template-columns: 1fr;
-        }
-      }
-
-      .card {
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 28px;
-        padding: 28px;
-        backdrop-filter: blur(18px);
-        box-shadow: 0 28px 80px rgba(2, 6, 23, 0.45);
-      }
-
-      h1, h2, h3 { margin-top: 0; }
-      h1 { font-size: clamp(2rem, 5vw, 3.2rem); margin-bottom: 12px; }
-      h2 { font-size: 1.25rem; margin-bottom: 12px; }
-      p { color: var(--muted); }
-      code {
-        display: block;
-        padding: 12px 14px;
-        border-radius: 14px;
-        background: rgba(15, 23, 42, 0.75);
-        border: 1px solid rgba(148, 163, 184, 0.14);
-        overflow-wrap: anywhere;
-      }
-      ul { margin: 0; padding-left: 20px; color: var(--text); }
-      li + li { margin-top: 6px; }
-
-      .eyebrow {
-        display: inline-flex;
-        margin-bottom: 16px;
-        padding: 8px 12px;
-        border-radius: 999px;
-        background: rgba(56, 189, 248, 0.14);
-        color: var(--accent-2);
-        font-size: 12px;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-
-      .actions {
+          linear-gradient(180deg, #0b0d12 0%, #06070a 50%, #090b0d 100%);
+        color: var(--text-primary);
+        min-height: 100vh;
         display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        margin-top: 20px;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        line-height: 1.6;
+        overflow-x: hidden;
       }
 
-      button {
-        border: 0;
-        border-radius: 14px;
-        padding: 14px 18px;
-        font: inherit;
-        font-weight: 700;
-        cursor: pointer;
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        background:
+          linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+          linear-gradient(135deg, rgba(20, 184, 166, 0.12), transparent 34%),
+          linear-gradient(315deg, rgba(124, 58, 237, 0.12), transparent 36%);
+        background-size: 44px 44px, 44px 44px, auto, auto;
       }
 
-      .primary { background: var(--accent); color: #04110a; }
-      .secondary { background: rgba(56, 189, 248, 0.14); color: #dff6ff; }
-      .ghost { background: transparent; color: var(--danger); border: 1px solid rgba(251, 113, 133, 0.35); }
+      .consent-card {
+        width: 100%; max-width: 600px;
+        background: var(--surface);
+        backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+        border: 1px solid var(--glass-border); border-radius: 18px;
+        padding: 3rem; box-shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
+        animation: cardIn 0.34s cubic-bezier(0.16, 1, 0.3, 1);
+      }
 
-      .stack { display: grid; gap: 14px; }
-      .field {
-        display: grid;
-        gap: 8px;
+      @keyframes cardIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+      .logo-icon {
+        width: 52px; height: 52px;
+        background: linear-gradient(135deg, var(--accent-2), var(--accent-3));
+        border-radius: 12px; display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 2rem; box-shadow: 0 10px 25px rgba(139, 92, 246, 0.3);
       }
-      input {
-        width: 100%;
-        padding: 14px 16px;
-        border-radius: 14px;
-        border: 1px solid var(--border);
-        background: rgba(15, 23, 42, 0.66);
-        color: var(--text);
-        font: inherit;
+
+      h1 { font-size: 2.15rem; font-weight: 800; margin-bottom: 1rem; text-align: center; }
+      .subtitle { color: var(--text-secondary); margin-bottom: 2.5rem; text-align: center; font-size: 1.05rem; }
+
+      .info-grid { display: grid; gap: 1.5rem; margin-bottom: 2.5rem; }
+      .info-box {
+        background: rgba(0, 0, 0, 0.3); border: 1px solid var(--glass-border);
+        border-radius: 12px; padding: 1.35rem;
       }
-      .status {
-        min-height: 48px;
-        padding: 12px 14px;
-        border-radius: 14px;
-        border: 1px solid rgba(148, 163, 184, 0.14);
-        background: rgba(15, 23, 42, 0.5);
-        color: var(--muted);
+      .label { font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem; display: block; }
+      code { font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent-2); word-break: break-all; }
+
+      .scope-list { list-style: none; display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+      .scope-list li {
+        background: rgba(255, 255, 255, 0.05); padding: 0.3rem 0.7rem;
+        border-radius: 8px; font-size: 0.75rem; font-weight: 700; border: 1px solid var(--glass-border);
       }
-      .status.error {
-        color: #fecdd3;
-        border-color: rgba(251, 113, 133, 0.35);
-        background: rgba(127, 29, 29, 0.28);
+
+      .security-note {
+        font-size: 0.85rem; color: var(--text-secondary);
+        background: rgba(34, 197, 94, 0.05); border: 1px solid rgba(34, 197, 94, 0.1);
+        padding: 1rem; border-radius: 12px; margin-bottom: 2.5rem;
+        display: flex; gap: 0.75rem; align-items: flex-start;
       }
-      .status.success {
-        color: #bbf7d0;
-        border-color: rgba(34, 197, 94, 0.35);
-        background: rgba(20, 83, 45, 0.28);
+
+      .btn {
+        cursor: pointer; font-family: inherit; font-weight: 700; font-size: 1rem;
+        padding: 1rem; border-radius: 10px; border: none; width: 100%;
+        transition: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
       }
-      .hidden { display: none; }
-      .meta-grid {
-        display: grid;
-        gap: 16px;
+      .btn-primary { background: var(--accent); color: #052e16; }
+      .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 15px 30px var(--accent-glow); }
+      .btn-outline { background: #fff; color: #000; }
+      .btn-outline:hover { transform: translateY(-2px); }
+      .btn-ghost { background: transparent; color: var(--danger); border: 1px solid rgba(251, 113, 133, 0.2); margin-top: 1rem; }
+
+      .status-msg { text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-secondary); }
+      .error { color: var(--danger); }
+      .hidden { display: none !important; }
+      @media (max-width: 640px) {
+        body { padding: 1rem; align-items: flex-start; }
+        .consent-card { padding: 1.5rem; }
+        h1 { font-size: 1.8rem; }
       }
-      .meta-item strong {
-        display: block;
-        font-size: 12px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--muted);
-        margin-bottom: 8px;
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
       }
     </style>
   </head>
   <body>
-    <div class="shell">
-      <section class="card">
-        <div class="eyebrow">OAuth Consent</div>
-        <h1>Connect ChatGPT to your Nomi workspace</h1>
-        <p>
-          AmaNomiBridge is requesting permission to act on your behalf inside this MCP session.
-          Sign in first, then approve the bridge.
-        </p>
+    <div class="consent-card">
+      <div class="logo-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
 
-        <div id="invalid-request" class="${authorizationId ? 'hidden' : ''}">
-          <div class="status error">Missing or invalid authorization request. Start the OAuth flow again from ChatGPT.</div>
+      <div id="consent-app" class="${authorizationId ? '' : 'hidden'}">
+        <h1>Authorize Connection</h1>
+        <p class="subtitle">An external client is requesting access to your workspace via AmaLink Nomi bridge.</p>
+
+        <div class="info-grid">
+          <div class="info-box">
+            <span class="label">Requesting Client</span>
+            <code>${escapeHtml(input.clientId ?? 'External MCP Client')}</code>
+          </div>
+          <div class="info-box">
+            <span class="label">Permissions (Scopes)</span>
+            <ul class="scope-list">${scopesMarkup}</ul>
+          </div>
         </div>
 
-        <div id="consent-app" class="${authorizationId ? '' : 'hidden'}">
-          <div id="login-panel">
-            <div class="actions">
-              <button id="github-login" class="primary" type="button">
-                Continue with GitHub
-                <span style="font-size:0.72rem;font-weight:600;opacity:0.85;margin-left:6px;">Recommended</span>
-              </button>
-              <button id="google-login" class="secondary" type="button">Continue with Google</button>
-            </div>
-          </div>
-
-          <div id="session-panel" class="hidden">
-            <div class="status success" id="session-copy">Session detected.</div>
-            <div class="actions">
-              <button id="approve" class="primary" type="button">Approve Access</button>
-              <button id="deny" class="ghost" type="button">Deny</button>
-            </div>
-          </div>
-
-          <div id="status" class="status ${input.error ? 'error' : ''}">${escapeHtml(
-            input.error ?? 'Use the same browser window to complete sign-in and approval.'
-          )}</div>
+        <div class="security-note">
+           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+           <span>Your Nomi API key is never shared with the client. The bridge acts as a secure proxy to protect your credentials.</span>
         </div>
-      </section>
 
-      <aside class="card">
-        <h2>What ChatGPT will receive</h2>
-        <div class="meta-grid">
-          <div class="meta-item">
-            <strong>Redirect URI</strong>
-            <code>${escapeHtml(input.redirectUri ?? 'Pending from authorization request')}</code>
-          </div>
-          <div class="meta-item">
-            <strong>Resource</strong>
-            <code>${escapeHtml(input.resource ?? `${'${window.location.origin}'}/api/mcp`)}</code>
-          </div>
-          <div class="meta-item">
-            <strong>Scopes</strong>
-            <ul>${scopesMarkup}</ul>
-          </div>
-          <div class="meta-item">
-            <strong>Client Reference</strong>
-            <code>${escapeHtml(input.clientId ?? 'Pending from authorization request')}</code>
-          </div>
+        <div id="login-panel">
+          <button id="github-login" class="btn btn-outline">Continue with GitHub</button>
+          <button id="google-login" class="btn btn-ghost" style="color: #fff; border-color: var(--glass-border)">Continue with Google</button>
         </div>
-      </aside>
+
+        <div id="session-panel" class="hidden">
+          <button id="approve" class="btn btn-primary">Approve & Connect</button>
+          <button id="deny" class="btn btn-ghost">Deny Access</button>
+        </div>
+
+        <div id="status" class="status-msg ${input.error ? 'error' : ''}">
+          ${escapeHtml(input.error ?? 'Please sign in to complete authorization.')}
+        </div>
+      </div>
+
+      <div id="invalid-request" class="${authorizationId ? 'hidden' : ''}">
+        <h1 style="color: var(--danger)">Expired Session</h1>
+        <p class="subtitle">This authorization request is no longer valid. Please restart the flow from your AI client.</p>
+        <button onclick="window.location.href='/'" class="btn btn-outline">Go to Dashboard</button>
+      </div>
     </div>
 
     <script type="module">
@@ -243,26 +201,16 @@ export function renderConsentPage(input: {
       const statusNode = document.getElementById('status');
       const loginPanel = document.getElementById('login-panel');
       const sessionPanel = document.getElementById('session-panel');
-      const sessionCopy = document.getElementById('session-copy');
-      const emailInput = document.getElementById('email');
-      const approveButton = document.getElementById('approve');
-      const denyButton = document.getElementById('deny');
-      let submissionInFlight = false;
-      let appBaseUrl = window.location.origin;
+
+      let client;
 
       if (authorizationId) {
-        boot().catch((error) => setStatus(error?.message || 'Failed to initialize consent.', true));
+        boot().catch(console.error);
       }
 
       async function boot() {
-        const configResponse = await fetch('/api/public-config');
-        if (!configResponse.ok) {
-          throw new Error('Failed to load Supabase public config.');
-        }
-
-        const config = await configResponse.json();
-        appBaseUrl = config.appBaseUrl || window.location.origin;
-        const client = createClient(config.supabaseUrl, config.supabaseAnonKey, {
+        const config = await (await fetch('/api/public-config')).json();
+        client = createClient(config.supabaseUrl, config.supabaseAnonKey, {
           auth: {
             flowType: 'pkce',
             detectSessionInUrl: false,
@@ -271,175 +219,70 @@ export function renderConsentPage(input: {
           },
         });
 
-        await completeRedirectSignIn(client);
-
-        client.auth.onAuthStateChange((_event, session) => {
-          renderSession(session);
-        });
-
+        await completeRedirect();
         const { data } = await client.auth.getSession();
-        renderSession(data.session);
+        render(data.session);
 
-        document.getElementById('magic-link')?.addEventListener('click', async () => {
-          const email = emailInput.value.trim();
-          if (!email) {
-            setStatus('Enter your email first.', true);
-            return;
+        client.auth.onAuthStateChange((_, s) => render(s));
+
+        document.getElementById('github-login').onclick = () => client.auth.signInWithOAuth({ provider: 'github', options: { redirectTo: window.location.href } });
+        document.getElementById('google-login').onclick = () => client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } });
+
+        document.getElementById('approve').onclick = async () => {
+          const { data } = await client.auth.getSession();
+          if(!data.session) return;
+
+          setStatus('Authorizing connection...');
+          try {
+            const res = await (await fetch('/oauth/consent', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + data.session.access_token },
+              body: JSON.stringify({ authorizationId, decision: 'approve', refreshToken: data.session.refresh_token })
+            })).json();
+
+            if(res.redirectUrl) window.location.assign(res.redirectUrl);
+            else setStatus(res.error?.message || 'Approval failed.', true);
+          } catch (error) {
+            console.error(error);
+            setStatus('Network error while approving. Try again.', true);
           }
+        };
 
-          const { error } = await client.auth.signInWithOtp({
-            email,
-            options: {
-              emailRedirectTo: buildAppUrl(appBaseUrl, window.location.pathname + window.location.search).href,
-            },
-          });
-
-          setStatus(error ? error.message : 'Magic link sent. Open it in this browser to continue.', Boolean(error));
-        });
-
-        document.getElementById('google-login')?.addEventListener('click', async () => {
-          const { error } = await client.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-              redirectTo: buildAppUrl(appBaseUrl, window.location.pathname + window.location.search).href,
-            },
-          });
-
-          if (error) {
-            setStatus(error.message, true);
+        document.getElementById('deny').onclick = async () => {
+          try {
+            const res = await (await fetch('/oauth/consent', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ authorizationId, decision: 'deny' })
+            })).json();
+            if(res.redirectUrl) window.location.assign(res.redirectUrl);
+            else setStatus(res.error?.message || 'Denial failed.', true);
+          } catch (error) {
+            console.error(error);
+            setStatus('Network error while denying access. Try again.', true);
           }
-        });
-
-        document.getElementById('github-login')?.addEventListener('click', async () => {
-          const { error } = await client.auth.signInWithOAuth({
-            provider: 'github',
-            options: {
-              redirectTo: buildAppUrl(appBaseUrl, window.location.pathname + window.location.search).href,
-            },
-          });
-
-          if (error) {
-            setStatus(error.message, true);
-          }
-        });
-
-        document.getElementById('approve')?.addEventListener('click', async () => {
-          if (submissionInFlight) return;
-          const session = (await client.auth.getSession()).data.session;
-          if (!session?.access_token) {
-            setStatus('Sign in before approving access.', true);
-            return;
-          }
-
-          submissionInFlight = true;
-          setButtonsDisabled(true);
-          setStatus('Approving access and redirecting back to your MCP client…', false, true);
-
-          const response = await fetch('/oauth/consent', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: 'Bearer ' + session.access_token,
-            },
-            body: JSON.stringify({
-              authorizationId,
-              decision: 'approve',
-              refreshToken: session.refresh_token ?? null,
-            }),
-          });
-
-          const payload = await response.json().catch(() => null);
-          if (!response.ok || !payload?.redirectUrl) {
-            submissionInFlight = false;
-            setButtonsDisabled(false);
-            setStatus(payload?.error?.message || 'Approval failed.', true);
-            return;
-          }
-
-          window.location.assign(payload.redirectUrl);
-        });
-
-        document.getElementById('deny')?.addEventListener('click', async () => {
-          if (submissionInFlight) return;
-          submissionInFlight = true;
-          setButtonsDisabled(true);
-          setStatus('Denying access and returning to your MCP client…', false, true);
-
-          const response = await fetch('/oauth/consent', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              authorizationId,
-              decision: 'deny',
-            }),
-          });
-
-          const payload = await response.json().catch(() => null);
-          if (!response.ok || !payload?.redirectUrl) {
-            submissionInFlight = false;
-            setButtonsDisabled(false);
-            setStatus(payload?.error?.message || 'Unable to deny access cleanly.', true);
-            return;
-          }
-
-          window.location.assign(payload.redirectUrl);
-        });
+        };
       }
 
-      async function completeRedirectSignIn(client) {
+      function render(s) {
+        loginPanel.classList.toggle('hidden', !!s);
+        sessionPanel.classList.toggle('hidden', !s);
+        if(s) setStatus('Signed in as ' + s.user.email);
+      }
+
+      async function completeRedirect() {
         const url = new URL(window.location.href);
-        const authCode = url.searchParams.get('code');
-        const authError = url.searchParams.get('error_description') || url.searchParams.get('error');
-
-        if (authError) {
-          setStatus(authError, true);
-        }
-
-        if (!authCode) {
-          return;
-        }
-
-        setStatus('Completing Supabase sign-in…', false, true);
-        const { error } = await client.auth.exchangeCodeForSession(authCode);
-        if (error) {
-          throw new Error(error.message || 'Supabase sign-in callback failed.');
-        }
-
-        const cleaned = buildAppUrl(appBaseUrl, window.location.pathname);
-        if (authorizationId) {
-          cleaned.searchParams.set('authorization_id', authorizationId);
-        }
-
-        window.history.replaceState({}, '', cleaned.toString());
-        setStatus('Supabase sign-in completed. You can now approve access.', false, true);
-      }
-
-      function renderSession(session) {
-        const isLoggedIn = Boolean(session?.access_token);
-        loginPanel.classList.toggle('hidden', isLoggedIn);
-        sessionPanel.classList.toggle('hidden', !isLoggedIn);
-
-        if (isLoggedIn) {
-          sessionCopy.textContent = 'Signed in as ' + (session.user?.email || session.user?.id || 'current user');
-          setStatus('Approve access to finish the ChatGPT connection.', false, true);
+        const code = url.searchParams.get('code');
+        if(code) {
+          await client.auth.exchangeCodeForSession(code);
+          url.searchParams.delete('code');
+          window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
         }
       }
 
-      function setButtonsDisabled(disabled) {
-        if (approveButton) approveButton.disabled = disabled;
-        if (denyButton) denyButton.disabled = disabled;
-      }
-
-      function setStatus(message, isError = false, isSuccess = false) {
-        statusNode.textContent = message;
-        statusNode.classList.toggle('error', Boolean(isError));
-        statusNode.classList.toggle('success', Boolean(isSuccess));
-      }
-
-      function buildAppUrl(baseUrl, pathWithQuery) {
-        return new URL(pathWithQuery, baseUrl.endsWith('/') ? baseUrl : baseUrl + '/');
+      function setStatus(msg, err = false) {
+        statusNode.textContent = msg;
+        statusNode.classList.toggle('error', err);
       }
     </script>
   </body>

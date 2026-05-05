@@ -32,6 +32,15 @@
   },
   "overrides": {
     "@hono/node-server": "^1.19.13",
-    "hono": "^4.12.12"
+    "hono": "^4.12.12",
+    "@vercel/node": {
+      "path-to-regexp": "^6.3.0",
+      "undici": "^6.24.0"
+    },
+    "@vercel/python-analysis": {
+      "minimatch": "^10.2.4",
+      "smol-toml": "^1.6.1"
+    },
+    "ajv": "^8.18.0"
   }
 }
