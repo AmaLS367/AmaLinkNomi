@@ -5,5 +5,5 @@ import { logger } from '../shared/logger';
 const app = createApp();
 const port = parseInt(getEnv().PORT, 10);
 app.listen(port, () => {
-  logger.info(`AmaNomiBridge running`, { port, env: getEnv().NODE_ENV });
+  logger.info(`AmaNomiBridge running on http://localhost:${port}`, { port, env: getEnv().NODE_ENV });
 });
