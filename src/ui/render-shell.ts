@@ -715,7 +715,19 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
 
       async function completeRedirectSignIn() {
         const url = new URL(window.location.href);
+        const authError = url.searchParams.get('error_description') || url.searchParams.get('error');
         const authCode = url.searchParams.get('code');
+
+        if (authError || authCode) {
+          const cleaned = buildAppUrl(appBaseUrl, window.location.pathname);
+          window.history.replaceState({}, '', cleaned.toString());
+        }
+
+        if (authError) {
+          setMessage('Magic link expired (likely scanned by your email client). Please request a new one or use Google.', true);
+          return;
+        }
+
         if (!authCode) {
           return;
         }
@@ -726,8 +738,6 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
           throw new Error(error.message || 'Supabase sign-in callback failed.');
         }
 
-        const cleaned = buildAppUrl(appBaseUrl, window.location.pathname);
-        window.history.replaceState({}, '', cleaned.toString());
         setMessage('Signed in successfully.');
       }
 
