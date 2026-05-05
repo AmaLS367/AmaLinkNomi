@@ -462,6 +462,9 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
                 <button id="google-login" type="button" class="btn-secondary">
                   Continue with Google
                 </button>
+                <button id="github-login" type="button" class="btn-secondary">
+                  Continue with GitHub
+                </button>
               </div>
             </form>
           </div>
@@ -610,6 +613,7 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
 
       const loginForm = document.getElementById('login-form');
       const googleLoginButton = document.getElementById('google-login');
+      const githubLoginButton = document.getElementById('github-login');
       const keyForm = document.getElementById('key-form');
       const deleteKeyButton = document.getElementById('delete-key');
       const refreshStatusButton = document.getElementById('refresh-status');
@@ -661,6 +665,7 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
 
         loginForm?.addEventListener('submit', onLoginSubmit);
         googleLoginButton?.addEventListener('click', onGoogleLogin);
+        githubLoginButton?.addEventListener('click', onGitHubLogin);
         keyForm?.addEventListener('submit', onSaveKey);
         deleteKeyButton?.addEventListener('click', onDeleteKey);
         refreshStatusButton?.addEventListener('click', () => refreshStatus());
@@ -711,6 +716,22 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
         }
 
         setMessage('Redirecting to Google sign-in…');
+      }
+
+      async function onGitHubLogin() {
+        const { error } = await client.auth.signInWithOAuth({
+          provider: 'github',
+          options: {
+            redirectTo: buildAppUrl(appBaseUrl, window.location.pathname).href,
+          },
+        });
+
+        if (error) {
+          setMessage(error.message, true);
+          return;
+        }
+
+        setMessage('Redirecting to GitHub sign-in…');
       }
 
       async function completeRedirectSignIn() {

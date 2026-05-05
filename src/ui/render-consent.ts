@@ -197,6 +197,7 @@ export function renderConsentPage(input: {
             <div class="actions">
               <button id="magic-link" class="secondary" type="button">Send Magic Link</button>
               <button id="google-login" class="secondary" type="button">Continue with Google</button>
+              <button id="github-login" class="secondary" type="button">Continue with GitHub</button>
             </div>
           </div>
 
@@ -301,6 +302,19 @@ export function renderConsentPage(input: {
         document.getElementById('google-login')?.addEventListener('click', async () => {
           const { error } = await client.auth.signInWithOAuth({
             provider: 'google',
+            options: {
+              redirectTo: buildAppUrl(appBaseUrl, window.location.pathname + window.location.search).href,
+            },
+          });
+
+          if (error) {
+            setStatus(error.message, true);
+          }
+        });
+
+        document.getElementById('github-login')?.addEventListener('click', async () => {
+          const { error } = await client.auth.signInWithOAuth({
+            provider: 'github',
             options: {
               redirectTo: buildAppUrl(appBaseUrl, window.location.pathname + window.location.search).href,
             },
