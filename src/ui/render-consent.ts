@@ -233,23 +233,34 @@ export function renderConsentPage(input: {
           if(!data.session) return;
 
           setStatus('Authorizing connection...');
-          const res = await (await fetch('/oauth/consent', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + data.session.access_token },
-            body: JSON.stringify({ authorizationId, decision: 'approve', refreshToken: data.session.refresh_token })
-          })).json();
+          try {
+            const res = await (await fetch('/oauth/consent', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + data.session.access_token },
+              body: JSON.stringify({ authorizationId, decision: 'approve', refreshToken: data.session.refresh_token })
+            })).json();
 
-          if(res.redirectUrl) window.location.assign(res.redirectUrl);
-          else setStatus(res.error?.message || 'Approval failed.', true);
+            if(res.redirectUrl) window.location.assign(res.redirectUrl);
+            else setStatus(res.error?.message || 'Approval failed.', true);
+          } catch (error) {
+            console.error(error);
+            setStatus('Network error while approving. Try again.', true);
+          }
         };
 
         document.getElementById('deny').onclick = async () => {
-          const res = await (await fetch('/oauth/consent', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ authorizationId, decision: 'deny' })
-          })).json();
-          if(res.redirectUrl) window.location.assign(res.redirectUrl);
+          try {
+            const res = await (await fetch('/oauth/consent', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ authorizationId, decision: 'deny' })
+            })).json();
+            if(res.redirectUrl) window.location.assign(res.redirectUrl);
+            else setStatus(res.error?.message || 'Denial failed.', true);
+          } catch (error) {
+            console.error(error);
+            setStatus('Network error while denying access. Try again.', true);
+          }
         };
       }
 

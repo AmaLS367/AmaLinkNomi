@@ -266,7 +266,7 @@ export function createApp(options: CreateAppOptions = {}) {
 }
 
 function shouldRedirectToCanonicalHost(path: string): boolean {
-  return path === '/' || path === '/settings' || path.startsWith('/guides') || path === '/status' || path === '/oauth/consent';
+  return path === '/' || path === '/settings' || path === '/guides' || path.startsWith('/guides/') || path === '/status' || path === '/oauth/consent';
 }
 
 function isLocalOrigin(origin: string): boolean {

@@ -682,22 +682,32 @@ export function renderShell(activeView: ActiveView, activeGuide: GuideSlug = 'in
             showToast('Paste a Nomi key first.');
             return;
           }
-          const res = await fetch('/api/me/nomi-key', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
-            body: JSON.stringify({ apiKey })
-          });
-          if (res.ok) { showToast('Key saved successfully.'); refresh(); document.getElementById('nomi-key').value = ''; }
-          else showToast('Could not save key.');
+          try {
+            const res = await fetch('/api/me/nomi-key', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+              body: JSON.stringify({ apiKey })
+            });
+            if (res.ok) { showToast('Key saved successfully.'); refresh(); document.getElementById('nomi-key').value = ''; }
+            else showToast('Could not save key.');
+          } catch (error) {
+            console.error(error);
+            showToast('Network error while saving key.');
+          }
         };
         document.getElementById('delete-key').onclick = async () => {
           if (!confirm('Delete the stored Nomi key?')) return;
-          const res = await fetch('/api/me/nomi-key', {
-            method: 'DELETE',
-            headers: { 'Authorization': 'Bearer ' + session.access_token },
-          });
-          if (res.ok) { showToast('Key deleted.'); refresh(); }
-          else showToast('Could not delete key.');
+          try {
+            const res = await fetch('/api/me/nomi-key', {
+              method: 'DELETE',
+              headers: { 'Authorization': 'Bearer ' + session.access_token },
+            });
+            if (res.ok) { showToast('Key deleted.'); refresh(); }
+            else showToast('Could not delete key.');
+          } catch (error) {
+            console.error(error);
+            showToast('Network error while deleting key.');
+          }
         };
 
         if (session) refresh();
@@ -806,7 +816,7 @@ export function renderShell(activeView: ActiveView, activeGuide: GuideSlug = 'in
           kBadge.className = 'badge ' + (isOk ? 'badge-success' : 'badge-danger');
 
           document.getElementById('last4-value').textContent = data.last4 ? '•••• ' + data.last4 : '—';
-          document.getElementById('validated-value').textContent = data.validatedAt ? new Date(data.validatedAt).toLocaleTimeString() : 'Never';
+          document.getElementById('validated-value').textContent = data.validatedAt ? new Date(data.validatedAt).toLocaleString() : 'Never';
           document.getElementById('step-2').dataset.done = isOk.toString();
           document.getElementById('mcp-endpoint').textContent = window.location.origin + '/api/mcp';
         } catch(e) { console.error(e); }

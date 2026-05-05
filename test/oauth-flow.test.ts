@@ -111,6 +111,17 @@ test('public config exposes the canonical app url and preview hosts redirect to 
       'https://ama-link-nomi.vercel.app/settings?from=preview'
     );
 
+    const invalidGuidePrefixResponse = await fetch(`${ctx.origin}/guides-extra`, {
+      headers: {
+        'x-forwarded-host': 'ama-link-nomi-ifbd3ltk5-amas-projects-57827094.vercel.app',
+        'x-forwarded-proto': 'https',
+      },
+      redirect: 'manual',
+    });
+
+    assert.equal(invalidGuidePrefixResponse.status, 404);
+    assert.equal(invalidGuidePrefixResponse.headers.get('location'), null);
+
     const guidesResponse = await fetch(`${ctx.origin}/guides`);
     assert.equal(guidesResponse.status, 200);
     assert.match(await guidesResponse.text(), /id="guides-view"/);
