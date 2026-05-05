@@ -440,24 +440,24 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
           <div id="auth-panel">
             <h2>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-              Secure Login
+              ${activeView === 'settings' ? 'Nomi API Key Setup' : activeView === 'status' ? 'Connection Status' : 'Secure Login'}
             </h2>
-            <p style="color: var(--text-secondary); margin-bottom: 2rem;">Sign in with your email to access your personal bridge configuration.</p>
-            <form id="login-form">
-              <div class="form-group">
-                <label for="email">Email Address</label>
-                <input id="email" type="email" placeholder="name@company.com" required />
-              </div>
-              <div class="btn-group">
-                <button type="submit" class="btn-primary">
-                  Send Magic Link
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                </button>
-                <button id="google-login" type="button" class="btn-secondary">
-                  Continue with Google
-                </button>
-              </div>
-            </form>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">${
+              activeView === 'settings'
+                ? 'Sign in to configure your Nomi API key. Your key is encrypted with AES-256 before storage.'
+                : activeView === 'status'
+                  ? 'Sign in to view your connection status and MCP endpoint details.'
+                  : 'Sign in with GitHub or Google to access your personal bridge configuration.'
+            }</p>
+            <div class="btn-group">
+              <button id="github-login" type="button" class="btn-primary">
+                Continue with GitHub
+                <span style="font-size:0.75rem;font-weight:500;opacity:0.85;margin-left:6px;">Recommended</span>
+              </button>
+              <button id="google-login" type="button" class="btn-secondary">
+                Continue with Google
+              </button>
+            </div>
           </div>
 
           <!-- Home / Dashboard View -->
@@ -553,7 +553,7 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
                 <div class="step-number">1</div>
                 <div class="step-content">
                   <h4>Authenticate</h4>
-                  <p>Use your email to receive a secure login link via Supabase.</p>
+                  <p>Sign in with GitHub or Google to access your personal bridge configuration.</p>
                 </div>
               </div>
               <div class="step-item">
@@ -602,8 +602,8 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
       const summaryKeyStatus = document.getElementById('summary-key-status');
       const summaryBridgeStatus = document.getElementById('summary-bridge-status');
 
-      const loginForm = document.getElementById('login-form');
       const googleLoginButton = document.getElementById('google-login');
+      const githubLoginButton = document.getElementById('github-login');
       const keyForm = document.getElementById('key-form');
       const deleteKeyButton = document.getElementById('delete-key');
       const refreshStatusButton = document.getElementById('refresh-status');
@@ -653,8 +653,8 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
           }
         });
 
-        loginForm?.addEventListener('submit', onLoginSubmit);
         googleLoginButton?.addEventListener('click', onGoogleLogin);
+        githubLoginButton?.addEventListener('click', onGitHubLogin);
         keyForm?.addEventListener('submit', onSaveKey);
         deleteKeyButton?.addEventListener('click', onDeleteKey);
         refreshStatusButton?.addEventListener('click', () => refreshStatus());
@@ -666,29 +666,6 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
         if (session) {
           await refreshStatus();
         }
-      }
-
-      async function onLoginSubmit(event) {
-        event.preventDefault();
-        const email = document.getElementById('email').value.trim();
-        if (!email) {
-          setMessage('Enter an email address first.', true);
-          return;
-        }
-
-        const { error } = await client.auth.signInWithOtp({
-          email,
-          options: {
-            emailRedirectTo: buildAppUrl(appBaseUrl, window.location.pathname).href,
-          },
-        });
-
-        if (error) {
-          setMessage(error.message, true);
-          return;
-        }
-
-        setMessage('✨ Magic link sent! Check your inbox to continue.');
       }
 
       async function onGoogleLogin() {
@@ -707,9 +684,37 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
         setMessage('Redirecting to Google sign-in…');
       }
 
+      async function onGitHubLogin() {
+        const { error } = await client.auth.signInWithOAuth({
+          provider: 'github',
+          options: {
+            redirectTo: buildAppUrl(appBaseUrl, window.location.pathname).href,
+          },
+        });
+
+        if (error) {
+          setMessage(error.message, true);
+          return;
+        }
+
+        setMessage('Redirecting to GitHub sign-in…');
+      }
+
       async function completeRedirectSignIn() {
         const url = new URL(window.location.href);
+        const authError = url.searchParams.get('error_description') || url.searchParams.get('error');
         const authCode = url.searchParams.get('code');
+
+        if (authError || authCode) {
+          const cleaned = buildAppUrl(appBaseUrl, window.location.pathname);
+          window.history.replaceState({}, '', cleaned.toString());
+        }
+
+        if (authError) {
+          setMessage('Sign-in failed. Please try GitHub or Google login.', true);
+          return;
+        }
+
         if (!authCode) {
           return;
         }
@@ -720,8 +725,6 @@ export function renderShell(activeView: 'home' | 'settings' | 'status'): string 
           throw new Error(error.message || 'Supabase sign-in callback failed.');
         }
 
-        const cleaned = buildAppUrl(appBaseUrl, window.location.pathname);
-        window.history.replaceState({}, '', cleaned.toString());
         setMessage('Signed in successfully.');
       }
 
